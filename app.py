@@ -603,7 +603,7 @@ def build_confidence_budget_attack():
             title_font=dict(color="#8B949E"), tickfont=dict(color="#8B949E"),
         ),
         legend=dict(font=dict(color="#8B949E", size=10),
-                    bgcolor=f"{CARD_BG}CC"),
+                    bgcolor="rgba(22, 27, 34, 0.8)"),
         height=320,
         margin=dict(l=50, r=20, t=20, b=50),
     )
