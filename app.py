@@ -337,6 +337,182 @@ st.markdown(f"""
         font-size: 0.8rem;
         margin-top: 0.3rem;
     }}
+
+    /* Animations */
+    @keyframes fadeInUp {{
+        from {{ opacity: 0; transform: translateY(12px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    @keyframes fadeIn {{
+        from {{ opacity: 0; }}
+        to {{ opacity: 1; }}
+    }}
+    @keyframes pulseGlow {{
+        0%, 100% {{ box-shadow: 0 0 0 0 rgba(248,113,113,0.3); }}
+        50% {{ box-shadow: 0 0 16px 4px rgba(248,113,113,0.15); }}
+    }}
+    @keyframes pulseGlowMint {{
+        0%, 100% {{ box-shadow: 0 0 0 0 rgba(52,211,153,0.3); }}
+        50% {{ box-shadow: 0 0 16px 4px rgba(52,211,153,0.15); }}
+    }}
+    @keyframes slideInLeft {{
+        from {{ opacity: 0; transform: translateX(-16px); }}
+        to {{ opacity: 1; transform: translateX(0); }}
+    }}
+    .anim-fade-in-up {{
+        animation: fadeInUp 0.5s ease-out both;
+    }}
+    .anim-fade-in {{
+        animation: fadeIn 0.4s ease-out both;
+    }}
+    .anim-pulse {{
+        animation: pulseGlow 2s ease-in-out infinite;
+    }}
+    .anim-pulse-mint {{
+        animation: pulseGlowMint 2s ease-in-out infinite;
+    }}
+    .anim-slide-left {{
+        animation: slideInLeft 0.4s ease-out both;
+    }}
+    .timeline-event {{
+        animation: fadeInUp 0.35s ease-out both;
+    }}
+
+    /* Progress bar */
+    .progress-container {{
+        background: {SLATE_700};
+        border-radius: 6px;
+        height: 6px;
+        overflow: hidden;
+        margin: 0.6rem 0 1rem 0;
+    }}
+    .progress-bar {{
+        height: 100%;
+        border-radius: 6px;
+        transition: width 0.3s ease;
+        background: linear-gradient(90deg, {CAPGEMINI_BLUE}, {AMBER});
+    }}
+    .progress-bar.complete {{
+        background: linear-gradient(90deg, {MINT}, {CAPGEMINI_BLUE});
+    }}
+    .progress-label {{
+        color: {SLATE_400};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.72rem;
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+    }}
+
+    /* Navigation hint */
+    .nav-hint {{
+        background: rgba(0,112,173,0.08);
+        border: 1px solid rgba(0,112,173,0.2);
+        border-radius: 8px;
+        padding: 0.8rem 1.2rem;
+        margin: 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        animation: fadeInUp 0.5s ease-out both;
+    }}
+    .nav-hint .icon {{
+        font-size: 1.2rem;
+    }}
+    .nav-hint .text {{
+        color: {SLATE_300};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+    }}
+    .nav-hint .tab-name {{
+        color: {CAPGEMINI_BLUE};
+        font-weight: 600;
+    }}
+
+    /* Scenario selector styling */
+    .scenario-selector {{
+        background: {CARD_BG};
+        border: 1px solid rgba(148,163,184,0.1);
+        border-radius: 10px;
+        padding: 1rem 1.4rem;
+        margin-bottom: 1rem;
+    }}
+    .scenario-selector .label {{
+        color: {SLATE_400};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }}
+
+    /* User profile cards */
+    .profile-card {{
+        background: {CARD_BG};
+        border: 1px solid rgba(148,163,184,0.1);
+        border-radius: 10px;
+        padding: 1.2rem;
+        animation: fadeInUp 0.4s ease-out both;
+    }}
+    .profile-card .avatar {{
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        color: {WHITE};
+        margin-bottom: 0.6rem;
+    }}
+    .profile-card .name {{
+        color: {WHITE};
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }}
+    .profile-card .role {{
+        color: {SLATE_400};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.78rem;
+        margin-bottom: 0.6rem;
+    }}
+    .profile-card .detail {{
+        color: {SLATE_400};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(148,163,184,0.06);
+    }}
+    .profile-card .detail .val {{
+        color: {SLATE_300};
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 500;
+    }}
+    .profile-card .risk-tag {{
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        margin-top: 0.6rem;
+    }}
+    .risk-low {{
+        background: rgba(52,211,153,0.1);
+        color: {MINT};
+        border: 1px solid rgba(52,211,153,0.25);
+    }}
+    .risk-medium {{
+        background: rgba(251,191,36,0.1);
+        color: {AMBER};
+        border: 1px solid rgba(251,191,36,0.25);
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -355,6 +531,42 @@ if "attack_timestamp" not in st.session_state:
     st.session_state.attack_timestamp = None
 if "animating" not in st.session_state:
     st.session_state.animating = False
+if "selected_scenario" not in st.session_state:
+    st.session_state.selected_scenario = 0
+
+# ---------------------------------------------------------------------------
+# Scénarios d'attaque (même script, noms et descriptions différents)
+# ---------------------------------------------------------------------------
+ATTACK_SCENARIOS = [
+    {
+        "name": "Credential Stuffing — Portail Marketing",
+        "vector": "Credential Stuffing",
+        "target": "SRV-WEB / mkt-user01",
+        "severity": "Critique",
+        "desc": "Attaque par dictionnaire ciblant les identifiants marketing exposés sur le portail web.",
+    },
+    {
+        "name": "Phishing ciblé — Spear Phishing RH",
+        "vector": "Spear Phishing",
+        "target": "Messagerie / rh-admin",
+        "severity": "Critique",
+        "desc": "E-mail de phishing hautement ciblé imitant un partenaire RH de confiance.",
+    },
+    {
+        "name": "Supply Chain — Dépendance compromise",
+        "vector": "Supply Chain Attack",
+        "target": "SRV-APP / npm registry",
+        "severity": "Élevée",
+        "desc": "Package tiers compromis injectant un reverse shell lors du build CI/CD.",
+    },
+    {
+        "name": "Insider Threat — Exfiltration lente",
+        "vector": "Insider Threat",
+        "target": "SRV-FILES / dev-user03",
+        "severity": "Élevée",
+        "desc": "Exfiltration progressive de documents sensibles par un compte interne légitime.",
+    },
+]
 
 # ---------------------------------------------------------------------------
 # Data helpers
@@ -814,7 +1026,7 @@ with st.sidebar:
 
     if is_attack:
         st.markdown(f"""
-        <div class="alert-card">
+        <div class="alert-card anim-pulse">
             <div class="label">Statut système</div>
             <div class="value">Test en cours</div>
         </div>
@@ -933,6 +1145,62 @@ with tab_avant:
         """, unsafe_allow_html=True)
 
     st.markdown("---")
+    st.markdown("**Profils comportementaux surveillés**")
+    prof1, prof2, prof3, prof4 = st.columns(4)
+    with prof1:
+        st.markdown(f"""
+        <div class="profile-card">
+            <div class="avatar" style="background:{CAPGEMINI_BLUE};">JD</div>
+            <div class="name">Jean Dupont</div>
+            <div class="role">Admin IT — Infrastructure</div>
+            <div class="detail"><span>Accès</span><span class="val">Privilégié</span></div>
+            <div class="detail"><span>Segments</span><span class="val">Tous</span></div>
+            <div class="detail"><span>Sessions / jour</span><span class="val">18</span></div>
+            <div class="detail"><span>Budget confiance</span><span class="val">87 %</span></div>
+            <div class="risk-tag risk-low">Risque bas</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with prof2:
+        st.markdown(f"""
+        <div class="profile-card" style="animation-delay:0.1s;">
+            <div class="avatar" style="background:{SLATE_600};">ML</div>
+            <div class="name">Marie Lefèvre</div>
+            <div class="role">Marketing — Chef de projet</div>
+            <div class="detail"><span>Accès</span><span class="val">Standard</span></div>
+            <div class="detail"><span>Segments</span><span class="val">MKT, Web</span></div>
+            <div class="detail"><span>Sessions / jour</span><span class="val">12</span></div>
+            <div class="detail"><span>Budget confiance</span><span class="val">92 %</span></div>
+            <div class="risk-tag risk-low">Risque bas</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with prof3:
+        st.markdown(f"""
+        <div class="profile-card" style="animation-delay:0.2s;">
+            <div class="avatar" style="background:{GOLD};">PT</div>
+            <div class="name">Pierre Tran</div>
+            <div class="role">Dev — Backend Lead</div>
+            <div class="detail"><span>Accès</span><span class="val">Élevé</span></div>
+            <div class="detail"><span>Segments</span><span class="val">Dev, Prod</span></div>
+            <div class="detail"><span>Sessions / jour</span><span class="val">24</span></div>
+            <div class="detail"><span>Budget confiance</span><span class="val">78 %</span></div>
+            <div class="risk-tag risk-medium">Risque modéré</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with prof4:
+        st.markdown(f"""
+        <div class="profile-card" style="animation-delay:0.3s;">
+            <div class="avatar" style="background:{SLATE_400};">SB</div>
+            <div class="name">Sophie Bernard</div>
+            <div class="role">Marketing — Stagiaire</div>
+            <div class="detail"><span>Accès</span><span class="val">Restreint</span></div>
+            <div class="detail"><span>Segments</span><span class="val">MKT</span></div>
+            <div class="detail"><span>Sessions / jour</span><span class="val">6</span></div>
+            <div class="detail"><span>Budget confiance</span><span class="val">95 %</span></div>
+            <div class="risk-tag risk-low">Risque bas</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
     st.markdown("**Tableau comportemental** &mdash; Consommation du budget confiance")
     st.plotly_chart(build_confidence_budget_chart(),
                     width="stretch", key="behavior_avant")
@@ -940,6 +1208,12 @@ with tab_avant:
         "Les profils **Admin IT** et **Marketing** restent dans les limites "
         "de leur baseline. Le budget confiance est respecté."
     )
+    st.markdown(f"""
+    <div class="nav-hint">
+        <div class="icon">&#10145;</div>
+        <div class="text">Passez à l'onglet <span class="tab-name">Pendant — Riposte Active & Mirage</span> pour lancer une simulation d'attaque et observer la réponse d'AEGIS AI.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ===== TAB 2 : PENDANT =====
@@ -954,10 +1228,39 @@ with tab_pendant:
     > et génère de faux contenus via IA pour maintenir l'illusion.
     """)
 
+    # ---- Scénario selector ----
+    scenario = ATTACK_SCENARIOS[st.session_state.selected_scenario]
+    col_sel, col_info = st.columns([1, 2])
+    with col_sel:
+        scenario_names = [s["name"] for s in ATTACK_SCENARIOS]
+        chosen = st.selectbox(
+            "Scénario de test",
+            scenario_names,
+            index=st.session_state.selected_scenario,
+            disabled=st.session_state.intrusion_active,
+            key="scenario_select",
+        )
+        st.session_state.selected_scenario = scenario_names.index(chosen)
+        scenario = ATTACK_SCENARIOS[st.session_state.selected_scenario]
+    with col_info:
+        st.markdown(f"""
+        <div class="scenario-selector anim-fade-in">
+            <div class="label">Détails du scénario</div>
+            <div style="color:{SLATE_300}; font-family:'Inter',sans-serif; font-size:0.85rem; margin-bottom:0.4rem;">
+                {scenario['desc']}
+            </div>
+            <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <span style="color:{SLATE_400}; font-size:0.78rem;">Vecteur : <b style="color:{WHITE};">{scenario['vector']}</b></span>
+                <span style="color:{SLATE_400}; font-size:0.78rem;">Cible : <b style="color:{WHITE};">{scenario['target']}</b></span>
+                <span style="color:{SLATE_400}; font-size:0.78rem;">Sévérité : <b style="color:{CORAL};">{scenario['severity']}</b></span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
     col_btn, col_status = st.columns([1, 2])
     with col_btn:
         intrusion_btn = st.button(
-            "Lancer le test de résilience (Vecteur : Credential Stuffing)",
+            f"Lancer le test — {scenario['vector']}",
             type="primary", width="stretch",
             disabled=st.session_state.intrusion_active,
         )
@@ -980,6 +1283,7 @@ with tab_pendant:
         """, unsafe_allow_html=True)
 
     # Layout containers
+    progress_ph = st.empty()
     col_net2, col_gauge2 = st.columns([3, 2])
     with col_net2:
         net_label_ph = st.empty()
@@ -1068,7 +1372,7 @@ with tab_pendant:
         # Continuity of service banner — the most reassuring metric
         if phase >= 1:
             continuity_ph.markdown(f"""
-            <div class="continuity-banner">
+            <div class="continuity-banner anim-fade-in-up anim-pulse-mint">
                 <div class="label">Continuité de service</div>
                 <div class="value">100 % Maintenue</div>
                 <div class="subtitle">Les services métier n'ont subi aucune interruption</div>
@@ -1082,11 +1386,28 @@ with tab_pendant:
         st.session_state.animating = True
         st.session_state.attack_timestamp = datetime.now()
         st.session_state.terminal_lines = []
+        total_steps = 3 + len(TERMINAL_SEQUENCE)  # 3 phases + terminal lines
+
+        def _update_progress(step, label):
+            pct = min(int((step / total_steps) * 100), 100)
+            css_class = "complete" if pct >= 100 else ""
+            progress_ph.markdown(f"""
+            <div>
+                <div class="progress-label">
+                    <span>{label}</span>
+                    <span>{pct} %</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar {css_class}" style="width:{pct}%;"></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
         # Phase 1
         st.session_state.attack_phase = 1
+        _update_progress(1, "Phase 1/3 — Détection & Analyse")
         status_ph.markdown(f"""
-        <div class="alert-card" style="text-align:center;">
+        <div class="alert-card anim-fade-in" style="text-align:center;">
             <div class="value" style="font-size:1rem;">Analyse en cours…</div>
         </div>
         """, unsafe_allow_html=True)
@@ -1095,25 +1416,28 @@ with tab_pendant:
 
         # Phase 2
         st.session_state.attack_phase = 2
+        _update_progress(2, "Phase 2/3 — Mirage actif")
         status_ph.markdown(f"""
-        <div class="alert-card" style="text-align:center;">
+        <div class="alert-card anim-fade-in" style="text-align:center;">
             <div class="value" style="font-size:1rem;">Mirage actif — Menace contenue par l'IA</div>
         </div>
         """, unsafe_allow_html=True)
         _render_panels(2, 85, [])
 
-        for line in TERMINAL_SEQUENCE:
+        for i, line in enumerate(TERMINAL_SEQUENCE):
             st.session_state.terminal_lines.append(line)
             terminal_ph.markdown(
                 get_terminal_html(st.session_state.terminal_lines),
                 unsafe_allow_html=True,
             )
+            _update_progress(3 + i, "Phase 2/3 — Audit console")
             time.sleep(0.3)
 
         # Phase 3
         st.session_state.attack_phase = 3
+        _update_progress(total_steps, "Phase 3/3 — Isolation terminée")
         status_ph.markdown(f"""
-        <div class="alert-card" style="text-align:center;">
+        <div class="alert-card anim-fade-in" style="text-align:center;">
             <div class="value" style="font-size:1rem;">Isolation terminée — Continuité maintenue</div>
         </div>
         """, unsafe_allow_html=True)
@@ -1129,6 +1453,12 @@ with tab_pendant:
             st.session_state.attack_phase, 94,
             st.session_state.terminal_lines,
         )
+        st.markdown(f"""
+        <div class="nav-hint">
+            <div class="icon">&#10145;</div>
+            <div class="text">Simulation terminée. Consultez l'onglet <span class="tab-name">Après — Forensics & Rapport NIS2</span> pour voir la timeline et générer le rapport d'incident.</div>
+        </div>
+        """, unsafe_allow_html=True)
         if reset_ph.button("Réinitialiser la simulation", key="reset_btn"):
             st.session_state.intrusion_active = False
             st.session_state.attack_phase = 0
@@ -1173,15 +1503,20 @@ with tab_apres:
             <div class="subtitle">Lancez d'abord une simulation dans l'onglet
             <b>Pendant</b> pour générer des données forensiques.</div>
         </div>
+        <div class="nav-hint">
+            <div class="icon">&#10145;</div>
+            <div class="text">Rendez-vous dans l'onglet <span class="tab-name">Pendant — Riposte Active & Mirage</span> pour lancer un test de résilience.</div>
+        </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("**Timeline de l'incident**")
         events = build_attack_timeline()
-        for ts, severity, desc in events:
+        for idx, (ts, severity, desc) in enumerate(events):
             time_str = (ts.strftime("%H:%M:%S.")
                         + f"{ts.microsecond // 1000:03d}")
+            delay = idx * 0.06
             st.markdown(f"""
-            <div class="timeline-event {severity}">
+            <div class="timeline-event {severity}" style="animation-delay:{delay}s;">
                 <div class="time">{time_str}</div>
                 <div class="desc">{desc}</div>
             </div>
