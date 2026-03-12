@@ -7,6 +7,7 @@ Prototype de démonstration interactive
 import time
 from datetime import datetime
 
+import pandas as pd
 import streamlit as st
 
 from core.theme import (
@@ -20,6 +21,7 @@ from ui.charts import (
     build_mitre_attack_matrix,
     build_confidence_budget_attack, build_confidence_budget_chart,
     build_network_figure, build_risk_gauge,
+    build_ecs_ingestion_timeseries, build_ecs_source_donut,
 )
 from ui.components import (
     build_attack_timeline, generate_nis2_pdf, get_nis2_report_html,
@@ -803,6 +805,138 @@ with tab_apres:
             build_mitre_attack_matrix(sidx),
             width="stretch",
             key=f"mitre_matrix_{sc['incident_ref']}",
+        )
+
+        st.markdown("---")
+
+        # ---------------------------------------------------------------
+        # Dashboard Analytics Avancé — Pipeline d'Ingestion & Mapping ECS
+        # ---------------------------------------------------------------
+        st.markdown("### Pipeline d'Ingestion & Mapping ECS")
+        st.caption(
+            "Analyse de la volumétrie d'ingestion et de la normalisation "
+            "Elastic Common Schema (ECS) durant l'incident détecté."
+        )
+
+        # — Key metrics row —
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        with col_m1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">Volume ingéré</div>
+                <div class="value" style="color:{CAPGEMINI_BLUE};">1.2M events</div>
+            </div>""", unsafe_allow_html=True)
+        with col_m2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">EPS (pic d'attaque)</div>
+                <div class="value" style="color:{CORAL};">4 872 eps</div>
+            </div>""", unsafe_allow_html=True)
+        with col_m3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">Conformité ECS</div>
+                <div class="value" style="color:{MINT};">98.5 %</div>
+            </div>""", unsafe_allow_html=True)
+        with col_m4:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">Temps parsing moyen</div>
+                <div class="value" style="color:{AMBER};">3.2 ms</div>
+            </div>""", unsafe_allow_html=True)
+
+        # — Time-series & Donut side by side —
+        col_ts, col_dn = st.columns([3, 2])
+        with col_ts:
+            st.caption("**Volumétrie d'ingestion — par minute**")
+            st.plotly_chart(
+                build_ecs_ingestion_timeseries(
+                    attack_h=sc["attack_h"],
+                    attack_m=sc["attack_m"],
+                ),
+                use_container_width=True,
+                key=f"ecs_ts_{sc['incident_ref']}",
+            )
+        with col_dn:
+            st.caption("**Répartition des sources de logs**")
+            st.plotly_chart(
+                build_ecs_source_donut(),
+                use_container_width=True,
+                key=f"ecs_donut_{sc['incident_ref']}",
+            )
+
+        # — Normalized ECS logs table —
+        st.caption("**Console — Logs normalisés ECS (extrait)**")
+        _ecs_logs = pd.DataFrame([
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m']:02d}:03Z",
+                "event.dataset": "firewall.log",
+                "source.ip": "185.220.101.47",
+                "user.name": "j.martin",
+                "event.action": "authentication-failure",
+                "rule.category": "Credential Stuffing",
+            },
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m']:02d}:06Z",
+                "event.dataset": "ad.security",
+                "source.ip": "185.220.101.47",
+                "user.name": "j.martin",
+                "event.action": "authentication-success",
+                "rule.category": "Initial Access",
+            },
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m']:02d}:19Z",
+                "event.dataset": "edr.alert",
+                "source.ip": "10.0.1.42",
+                "user.name": "j.martin",
+                "event.action": "lateral-movement-attempt",
+                "rule.category": "Lateral Movement",
+            },
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m']:02d}:31Z",
+                "event.dataset": "web.access",
+                "source.ip": "10.0.1.42",
+                "user.name": "svc_backup",
+                "event.action": "privilege-escalation",
+                "rule.category": "Privilege Escalation",
+            },
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m']:02d}:45Z",
+                "event.dataset": "sandbox.mirage",
+                "source.ip": "10.0.1.42",
+                "user.name": "svc_backup",
+                "event.action": "exfiltration-lure-triggered",
+                "rule.category": "Exfiltration (Mirage)",
+            },
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m'] + 1:02d}:02Z",
+                "event.dataset": "edr.alert",
+                "source.ip": "10.0.1.55",
+                "user.name": "svc_backup",
+                "event.action": "process-injection",
+                "rule.category": "Defense Evasion",
+            },
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m'] + 1:02d}:18Z",
+                "event.dataset": "ad.security",
+                "source.ip": "10.0.1.55",
+                "user.name": "administrator",
+                "event.action": "account-enumeration",
+                "rule.category": "Discovery",
+            },
+            {
+                "@timestamp": f"2026-03-11T{sc['attack_h']:02d}:{sc['attack_m'] + 1:02d}:46Z",
+                "event.dataset": "firewall.log",
+                "source.ip": "10.0.1.55",
+                "user.name": "administrator",
+                "event.action": "c2-beacon-blocked",
+                "rule.category": "Command & Control",
+            },
+        ])
+        st.dataframe(
+            _ecs_logs,
+            use_container_width=True,
+            hide_index=True,
         )
 
         st.markdown("---")
