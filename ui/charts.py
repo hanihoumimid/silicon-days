@@ -5,6 +5,7 @@ from core.theme import (
     AMBER, CAPGEMINI_BLUE, CARD_BG, CORAL, MINT, SLATE_300, SLATE_400,
     SLATE_600, SLATE_700, SLATE_800, WHITE,
 )
+from data.mock_data import ATTACK_SCENARIOS
 
 
 def build_network_nodes():
@@ -35,10 +36,12 @@ def build_network_nodes():
     return nodes, edges
 
 
-def get_node_color(node_id, node_info, intrusion_active, attack_phase):
-    compromised = {"WS-MKT-01", "AD-DC", "SRV-FILES"}
-    isolated = {"WS-MKT-01", "AD-DC"}
-    lateral_path = {"WS-MKT-01", "AD-DC", "SRV-FILES"}
+def get_node_color(node_id, node_info, intrusion_active, attack_phase,
+                   scenario_idx=0):
+    sc = ATTACK_SCENARIOS[scenario_idx]
+    compromised = sc["compromised_nodes"]
+    isolated = sc["isolated_nodes"]
+    lateral_path = sc["lateral_path"]
 
     if not intrusion_active:
         return CAPGEMINI_BLUE
@@ -69,15 +72,12 @@ def get_node_size(node_info):
     return mapping.get(node_info["type"], 14)
 
 
-def build_network_figure(intrusion_active, attack_phase):
+def build_network_figure(intrusion_active, attack_phase, scenario_idx=0):
     nodes, edges = build_network_nodes()
     fig = go.Figure()
 
-    compromised_edges = {
-        ("WS-MKT-01", "AD-DC"), ("AD-DC", "WS-MKT-01"),
-        ("AD-DC", "SRV-FILES"), ("SRV-FILES", "AD-DC"),
-        ("SRV-APP", "AD-DC"), ("AD-DC", "SRV-APP"),
-    }
+    sc = ATTACK_SCENARIOS[scenario_idx]
+    compromised_edges = sc["compromised_edges"]
 
     for src, dst in edges:
         n1, n2 = nodes[src], nodes[dst]
@@ -94,9 +94,10 @@ def build_network_figure(intrusion_active, attack_phase):
         ))
 
     for nid, info in nodes.items():
-        color = get_node_color(nid, info, intrusion_active, attack_phase)
+        color = get_node_color(nid, info, intrusion_active, attack_phase,
+                               scenario_idx)
         border_color = WHITE if color == CORAL else color
-        isolated_nodes = {"WS-MKT-01", "AD-DC"}
+        isolated_nodes = sc["isolated_nodes"]
         opacity = 0.35 if (intrusion_active and attack_phase >= 3
                            and nid in isolated_nodes) else 1.0
         fig.add_trace(go.Scatter(
@@ -114,13 +115,15 @@ def build_network_figure(intrusion_active, attack_phase):
         ))
 
     if intrusion_active and attack_phase >= 3:
+        x0, y0, x1, y1 = sc["isolated_zone"]
+        lx, ly, ltext = sc["isolated_zone_label"]
         fig.add_shape(
-            type="rect", x0=0.05, y0=0.15, x1=0.5, y1=0.6,
+            type="rect", x0=x0, y0=y0, x1=x1, y1=y1,
             line=dict(color=CORAL, width=2, dash="dash"),
             fillcolor="rgba(248,113,113,0.04)",
         )
         fig.add_annotation(
-            x=0.275, y=0.62, text="Zone isolée",
+            x=lx, y=ly, text=ltext,
             font=dict(color=CORAL, size=11, family="Inter"), showarrow=False,
         )
 
@@ -214,14 +217,16 @@ def build_confidence_budget_chart():
     return fig
 
 
-def build_confidence_budget_attack():
+def build_confidence_budget_attack(scenario_idx=0):
+    sc = ATTACK_SCENARIOS[scenario_idx]
+    a_start, a_end = sc["anomaly_window"]
     hours = list(range(0, 24))
     np.random.seed(42)
     admin_baseline = [60 + 15 * np.sin(h / 3.8) for h in hours]
     admin_real = [v + np.random.uniform(-3, 5) for v in admin_baseline]
     mkt_baseline = [30 + 25 * np.sin((h - 4) / 3.8) for h in hours]
     mkt_real = list(mkt_baseline)
-    for i in range(14, min(18, len(hours))):
+    for i in range(a_start, min(a_end, len(hours))):
         mkt_real[i] = mkt_baseline[i] + 35 + np.random.uniform(0, 10)
 
     fig = go.Figure()
@@ -243,9 +248,11 @@ def build_confidence_budget_attack():
         line=dict(color=CORAL, width=3),
         fill="tonexty", fillcolor="rgba(248,113,113,0.06)",
     ))
-    fig.add_vrect(x0=14, x1=17, fillcolor=CORAL, opacity=0.06, line_width=0)
+    mid = (a_start + a_end) / 2
+    fig.add_vrect(x0=a_start, x1=a_end, fillcolor=CORAL, opacity=0.06,
+                  line_width=0)
     fig.add_annotation(
-        x=15.5, y=95, text="Anomalie détectée",
+        x=mid, y=95, text="Anomalie détectée",
         font=dict(color=CORAL, size=12, family="Inter"), showarrow=False,
     )
     _chart_layout(fig, "Budget confiance (%)", [0, 110])

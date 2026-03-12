@@ -14,12 +14,15 @@ from core.theme import (
     SLATE_600, SLATE_700, SLATE_800, WHITE, inject_custom_css,
 )
 from core.state import init_session_state
-from data.mock_data import ATTACK_SCENARIOS, TERMINAL_SEQUENCE
+from data.mock_data import ATTACK_SCENARIOS, TERMINAL_SEQUENCES
 from ui.charts import (
     build_confidence_budget_attack, build_confidence_budget_chart,
     build_network_figure, build_risk_gauge,
 )
-from ui.components import build_attack_timeline, get_nis2_report_html, get_terminal_html
+from ui.components import (
+    build_attack_timeline, generate_nis2_pdf, get_nis2_report_html,
+    get_terminal_html,
+)
 
 # ---------------------------------------------------------------------------
 # Page config — MUST be the first Streamlit command
@@ -347,6 +350,7 @@ with tab_pendant:
 
     def _render_panels(phase, score, term_lines):
         uid = f"{phase}_{int(time.time() * 1000)}"
+        sidx = st.session_state.selected_scenario
 
         net_color = AMBER if phase >= 1 else MINT
         net_text = ("Mouvement détecté — IA en réponse" if phase >= 1
@@ -358,7 +362,7 @@ with tab_pendant:
         )
 
         net_chart_ph.plotly_chart(
-            build_network_figure(True, phase), width="stretch",
+            build_network_figure(True, phase, sidx), width="stretch",
             key=f"net_chart_{uid}"
         )
 
@@ -383,7 +387,7 @@ with tab_pendant:
             )
 
             behav_chart_ph.plotly_chart(
-                build_confidence_budget_attack(), width="stretch",
+                build_confidence_budget_attack(sidx), width="stretch",
                 key=f"behav_chart_{uid}"
             )
 
@@ -419,7 +423,9 @@ with tab_pendant:
         st.session_state.animating = True
         st.session_state.attack_timestamp = datetime.now()
         st.session_state.terminal_lines = []
-        total_steps = 3 + len(TERMINAL_SEQUENCE)
+        sidx = st.session_state.selected_scenario
+        terminal_seq = TERMINAL_SEQUENCES[sidx]
+        total_steps = 3 + len(terminal_seq)
 
         def _update_progress(step, label):
             pct = min(int((step / total_steps) * 100), 100)
@@ -457,7 +463,7 @@ with tab_pendant:
         """, unsafe_allow_html=True)
         _render_panels(2, 85, [])
 
-        for i, line in enumerate(TERMINAL_SEQUENCE):
+        for i, line in enumerate(terminal_seq):
             st.session_state.terminal_lines.append(line)
             terminal_ph.markdown(
                 get_terminal_html(st.session_state.terminal_lines),
@@ -543,7 +549,9 @@ with tab_apres:
         """, unsafe_allow_html=True)
     else:
         st.markdown("**Timeline de l'incident**")
-        events = build_attack_timeline()
+        sidx = st.session_state.selected_scenario
+        sc = ATTACK_SCENARIOS[sidx]
+        events = build_attack_timeline(sidx)
         for idx, (ts, severity, desc) in enumerate(events):
             time_str = (ts.strftime("%H:%M:%S.")
                         + f"{ts.microsecond // 1000:03d}")
@@ -572,64 +580,70 @@ with tab_apres:
             st.rerun()
 
         if st.session_state.nis2_generated:
-            st.markdown(get_nis2_report_html(), unsafe_allow_html=True)
+            st.markdown(get_nis2_report_html(sidx), unsafe_allow_html=True)
 
-            report_text = """RAPPORT D'INCIDENT NIS2 — AEGIS AI
+            # Build plain-text report from scenario data
+            ttps_lines = "\n".join(
+                f"- {code:12s}: {name} ({phase})"
+                for code, name, phase in sc["ttps"]
+            )
+            aegis_lines = "\n".join(f"[OK] {a}" for a in sc["aegis_actions"])
+            fw_lines = "\n  ".join(sc["fw_rules"])
+            iam_lines = "\n  - ".join(sc["iam_recs"])
+            mon_lines = "\n  - ".join(sc["monitoring_recs"])
+            report_text = f"""RAPPORT D'INCIDENT NIS2 — AEGIS AI
 ========================================
-Référence : AEGIS-INC-2026-0311-001
+Référence : {sc['incident_ref']}
 Classification : Critique
-Date : 11/03/2026 14:23:12 UTC
+Date : {sc['incident_date']}
 
 1. IDENTIFICATION
 Entité : Capgemini — Division Cyber Défense
-Type : Intrusion active avec déplacement latéral
-Durée : 52 secondes (détection à remédiation)
+Type : {sc['incident_type']}
+Durée : {sc['incident_duration']}
 Impact métier : Aucune interruption de service
 
 2. PATIENT ZÉRO
-Machine : WS-MKT-01 (10.0.2.47)
-Compte : mkt-user01
-Vecteur : Credential Stuffing via SRV-WEB (port 443)
-Cause : Mot de passe faible, absence de MFA
+Machine : {sc['patient_zero_machine']}
+Compte : {sc['patient_zero_account']}
+Vecteur : {sc['patient_zero_vector']}
+Cause : {sc['patient_zero_cause']}
 
 3. TTPs (MITRE ATT&CK)
-- T1110.004 : Credential Stuffing (Initial Access)
-- T1078     : Valid Accounts (Persistence)
-- T1021     : Remote Services SSH (Lateral Movement)
-- T1003     : OS Credential Dumping (Credential Access)
-- T1048     : Exfiltration Over Alt Protocol (Exfiltration)
+{ttps_lines}
 
 4. ACTIONS AEGIS
-[OK] Redirection vers Mirage Sandbox (Shadow Proxying L7)
-[OK] Injection de faux identifiants (Mirage IA génératif)
-[OK] Hash de traçage injecté dans le payload exfiltré
-[OK] Isolation réseau WS-MKT-01 et AD-DC
-[OK] Capture forensique complète
+{aegis_lines}
 
 5. RECOMMANDATIONS
 Firewall (Critique) :
-  iptables -A INPUT -s 10.0.2.0/24 -d 10.0.1.10 -p tcp --dport 22 -j DROP
-  iptables -A INPUT -p tcp --dport 443 -m connlimit --connlimit-above 10 -j REJECT
+  {fw_lines}
 
 IAM (Critique) :
-  - Réinitialisation du mot de passe mkt-user01
-  - MFA obligatoire sur portails web
-  - Politique mot de passe min. 14 car.
-  - Restreindre SSH inter-segments
+  - {iam_lines}
 
 Monitoring (Haute) :
-  - Alerte SIEM > 10 échecs auth / 10 s
-  - Logging SSH sur AD-DC et SRV-FILES
-  - EDR sur endpoints Marketing
+  - {mon_lines}
 
 ========================================
 AEGIS AI — Conforme NIS2 Art. 23
 Capgemini Cyber Défense 2026
 """
-            st.download_button(
-                label="Télécharger le rapport (TXT)",
-                data=report_text,
-                file_name="AEGIS_NIS2_Report_2026-03-11.txt",
-                mime="text/plain",
-                width="stretch",
-            )
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
+                st.download_button(
+                    label="Télécharger le rapport (TXT)",
+                    data=report_text,
+                    file_name=f"AEGIS_NIS2_{sc['incident_ref']}.txt",
+                    mime="text/plain",
+                    width="stretch",
+                )
+            with col_dl2:
+                pdf_bytes = generate_nis2_pdf(sidx)
+                st.download_button(
+                    label="Télécharger le rapport (PDF)",
+                    data=pdf_bytes,
+                    file_name=f"AEGIS_NIS2_{sc['incident_ref']}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                )
