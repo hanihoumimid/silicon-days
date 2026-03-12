@@ -2,7 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from core.theme import (
-    AMBER, CAPGEMINI_BLUE, CARD_BG, CORAL, MINT, SLATE_300, SLATE_400,
+    AMBER, CAPGEMINI_BLUE, CARD_BG, CORAL, GOLD, MINT, SLATE_300, SLATE_400,
     SLATE_600, SLATE_700, SLATE_800, WHITE,
 )
 from data.mock_data import ATTACK_SCENARIOS
@@ -358,4 +358,153 @@ def build_confidence_budget_attack(scenario_idx=0):
         font=dict(color=CORAL, size=12, family="Inter"), showarrow=False,
     )
     _chart_layout(fig, "Budget confiance (%)", [0, 110])
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# ECS Analytics — ingestion time-series
+# ---------------------------------------------------------------------------
+
+def build_ecs_ingestion_timeseries(attack_h=14, attack_m=23):
+    """Bar chart: log ingestion volume per minute with visible attack spike.
+
+    Parameters
+    ----------
+    attack_h, attack_m:
+        Hour and minute of the attack peak (used to label the spike).
+    """
+    from datetime import datetime, timedelta
+
+    base = datetime(2026, 3, 11, attack_h - 1, 0, 0)
+    minutes = [base + timedelta(minutes=i) for i in range(120)]
+    labels = [t.strftime("%H:%M") for t in minutes]
+
+    np.random.seed(7)
+    # Baseline: ~2 000 – 4 000 events/min
+    baseline = (np.random.poisson(lam=3000, size=120)).tolist()
+
+    # Attack window: minutes 60-75 relative to base (i.e. attack_h:00 to attack_h:15)
+    # The spike peaks around attack_m minutes into the window
+    spike_start = 60
+    spike_peak = spike_start + attack_m
+    for i in range(spike_start, min(spike_peak + 15, 120)):
+        factor = 1 + 8 * np.exp(-0.5 * ((i - spike_peak) / 4) ** 2)
+        baseline[i] = int(baseline[i] * factor)
+
+    colors = []
+    for i, v in enumerate(baseline):
+        if v > 12000:
+            colors.append("rgba(248,113,113,0.9)")   # red/coral peak
+        elif v > 6000:
+            colors.append("rgba(251,191,36,0.75)")   # amber elevated
+        else:
+            colors.append("rgba(0,112,173,0.65)")    # blue baseline
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=labels,
+        y=baseline,
+        marker_color=colors,
+        name="Événements / minute",
+        hovertemplate="<b>%{x}</b><br>%{y:,.0f} events<extra></extra>",
+    ))
+
+    # Annotation at the spike peak
+    peak_label = labels[spike_peak] if spike_peak < len(labels) else labels[-1]
+    peak_value = baseline[spike_peak]
+    fig.add_annotation(
+        x=peak_label,
+        y=peak_value,
+        text="⚠ Pic d'attaque",
+        font=dict(color=CORAL, size=11, family="Inter"),
+        showarrow=True,
+        arrowcolor=CORAL,
+        arrowsize=0.8,
+        ay=-40,
+    )
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(
+            title="Heure (HH:MM)",
+            tickangle=-45,
+            tickfont=dict(color=SLATE_400, size=9, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+            showgrid=False,
+            dtick=10,
+        ),
+        yaxis=dict(
+            title="Événements / minute",
+            tickfont=dict(color=SLATE_400, size=10, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+        ),
+        legend=dict(font=dict(color=SLATE_400, size=10, family="Inter"),
+                    bgcolor="rgba(0,0,0,0)"),
+        height=320,
+        margin=dict(l=55, r=20, t=30, b=60),
+        bargap=0.15,
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# ECS Analytics — source distribution donut
+# ---------------------------------------------------------------------------
+
+_ECS_SOURCES = [
+    ("Firewall",         4312, CORAL),
+    ("Active Directory", 3187, CAPGEMINI_BLUE),
+    ("Serveur Web",      2054, AMBER),
+    ("EDR",              1893, MINT),
+    ("Sandbox Mirage",    672, GOLD),
+]
+
+
+def build_ecs_source_donut():
+    """Donut chart: proportion of log sources ingested during the incident."""
+    labels = [s[0] for s in _ECS_SOURCES]
+    values = [s[1] for s in _ECS_SOURCES]
+    colors = [s[2] for s in _ECS_SOURCES]
+
+    fig = go.Figure(go.Pie(
+        labels=labels,
+        values=values,
+        hole=0.55,
+        marker=dict(
+            colors=colors,
+            line=dict(color=SLATE_800, width=2),
+        ),
+        textinfo="label+percent",
+        textfont=dict(color=WHITE, size=11, family="Inter"),
+        hovertemplate="<b>%{label}</b><br>%{value:,} events<br>%{percent}<extra></extra>",
+        direction="clockwise",
+        sort=True,
+    ))
+
+    fig.add_annotation(
+        text="Sources",
+        x=0.5, y=0.5,
+        font=dict(size=13, color=SLATE_300, family="Inter"),
+        showarrow=False,
+    )
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        showlegend=True,
+        legend=dict(
+            font=dict(color=SLATE_300, size=10, family="Inter"),
+            bgcolor="rgba(0,0,0,0)",
+            orientation="v",
+            x=1.02,
+            y=0.5,
+        ),
+        height=300,
+        margin=dict(l=10, r=120, t=20, b=20),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
     return fig
