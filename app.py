@@ -15,7 +15,7 @@ from core.theme import (
 )
 from core.state import init_session_state
 from data.mock_data import ATTACK_SCENARIOS, TERMINAL_SEQUENCES
-from data.ingestion import INGESTION_EVENTS, SOURCES
+from data.ingestion import INGESTION_EVENTS, SOURCES, get_log_stream
 from ui.charts import (
     build_mitre_attack_matrix,
     build_confidence_budget_attack, build_confidence_budget_chart,
@@ -23,7 +23,7 @@ from ui.charts import (
 )
 from ui.components import (
     build_attack_timeline, generate_nis2_pdf, get_nis2_report_html,
-    get_terminal_html,
+    get_terminal_html, get_log_stream_html,
     get_ingestion_source_header_html, get_ingestion_stats_html,
     get_raw_log_html, get_ecs_event_html,
 )
@@ -496,10 +496,43 @@ with tab_pendant:
     latency_ph = st.empty()
     continuity_ph = st.empty()
     expander_container = st.expander(
-        "Voir les détails techniques de l'isolation (Logs IA)",
+        "Flux de Logs en Streaming & Console d'audit AEGIS",
         expanded=False,
     )
     with expander_container:
+        # Source filter checkboxes
+        st.markdown(
+            f"<div style='color:{SLATE_400}; font-family:Inter,sans-serif;"
+            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
+            f"margin-bottom:0.5rem;'>Filtres par source</div>",
+            unsafe_allow_html=True,
+        )
+        fcol1, fcol2, fcol3, fcol4 = st.columns(4)
+        with fcol1:
+            fw_active = st.checkbox("🔥 Firewall", value=True, key="filter_fw")
+        with fcol2:
+            ad_active = st.checkbox("🏢 Active Directory", value=True, key="filter_ad")
+        with fcol3:
+            edr_active = st.checkbox("🖥️ EDR", value=True, key="filter_edr")
+        with fcol4:
+            cloud_active = st.checkbox("☁️ Cloud", value=True, key="filter_cloud")
+        active_sources = {
+            k for k, v in {
+                "firewall": fw_active,
+                "ad": ad_active,
+                "edr": edr_active,
+                "cloud": cloud_active,
+            }.items() if v
+        }
+
+        log_stream_ph = st.empty()
+
+        st.markdown(
+            f"<div style='color:{SLATE_400}; font-family:Inter,sans-serif;"
+            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
+            f"margin:0.8rem 0 0.3rem 0;'>Console d'audit AEGIS</div>",
+            unsafe_allow_html=True,
+        )
         terminal_ph = st.empty()
     reset_ph = st.empty()
 
@@ -562,6 +595,10 @@ with tab_pendant:
             terminal_ph.markdown(
                 get_terminal_html(term_lines), unsafe_allow_html=True,
             )
+        log_stream_ph.markdown(
+            get_log_stream_html(st.session_state.log_stream_events, active_sources),
+            unsafe_allow_html=True,
+        )
 
         if phase >= 1:
             continuity_ph.markdown(f"""
@@ -578,8 +615,10 @@ with tab_pendant:
         st.session_state.animating = True
         st.session_state.attack_timestamp = datetime.now()
         st.session_state.terminal_lines = []
+        st.session_state.log_stream_events = []
         sidx = st.session_state.selected_scenario
         terminal_seq = TERMINAL_SEQUENCES[sidx]
+        log_stream_seq = get_log_stream(sidx)
         total_steps = 3 + len(terminal_seq)
 
         def _update_progress(step, label):
@@ -618,14 +657,39 @@ with tab_pendant:
         """, unsafe_allow_html=True)
         _render_panels(2, 85, [])
 
+        # Compute how many log stream events to reveal per terminal line
+        n_log = len(log_stream_seq)
+        n_term = len(terminal_seq)
+        log_cursor = 0
+
         for i, line in enumerate(terminal_seq):
             st.session_state.terminal_lines.append(line)
             terminal_ph.markdown(
                 get_terminal_html(st.session_state.terminal_lines),
                 unsafe_allow_html=True,
             )
+            # Reveal proportional share of log events alongside terminal lines
+            target_log = round((i + 1) * n_log / n_term) if n_term else 0
+            while log_cursor < target_log and log_cursor < n_log:
+                st.session_state.log_stream_events.append(
+                    log_stream_seq[log_cursor]
+                )
+                log_cursor += 1
+            log_stream_ph.markdown(
+                get_log_stream_html(st.session_state.log_stream_events, active_sources),
+                unsafe_allow_html=True,
+            )
             _update_progress(3 + i, "Phase 2/3 — Audit console")
             time.sleep(0.3)
+
+        # Ensure all log events are added
+        while log_cursor < n_log:
+            st.session_state.log_stream_events.append(log_stream_seq[log_cursor])
+            log_cursor += 1
+        log_stream_ph.markdown(
+            get_log_stream_html(st.session_state.log_stream_events, active_sources),
+            unsafe_allow_html=True,
+        )
 
         # Phase 3
         st.session_state.attack_phase = 3
@@ -657,6 +721,7 @@ with tab_pendant:
             st.session_state.intrusion_active = False
             st.session_state.attack_phase = 0
             st.session_state.terminal_lines = []
+            st.session_state.log_stream_events = []
             st.session_state.nis2_generated = False
             st.session_state.attack_timestamp = None
             st.session_state.animating = False

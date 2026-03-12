@@ -139,6 +139,48 @@ def inject_custom_css():
         color: {SLATE_300};
     }}
 
+    /* Streaming log view */
+    .log-stream {{
+        background: {SLATE_700};
+        border: 1px solid rgba(148,163,184,0.15);
+        border-radius: 8px;
+        padding: 0.8rem 1rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        color: {SLATE_300};
+        line-height: 1.7;
+        max-height: 400px;
+        overflow-y: auto;
+    }}
+    .ls-entry {{
+        display: flex;
+        align-items: baseline;
+        gap: 0.6rem;
+        padding: 0.18rem 0;
+        border-bottom: 1px solid rgba(148,163,184,0.05);
+    }}
+    .ls-ts {{
+        color: {SLATE_400};
+        min-width: 100px;
+        flex-shrink: 0;
+        font-size: 0.74rem;
+    }}
+    .ls-msg {{
+        color: {SLATE_300};
+        flex: 1;
+        word-break: break-word;
+    }}
+    .ls-critical .ls-msg {{ color: {CORAL}; }}
+    .ls-warning  .ls-msg {{ color: {AMBER}; }}
+    .ls-info     .ls-msg {{ color: {SLATE_300}; }}
+    .ls-empty {{
+        color: {SLATE_400};
+        text-align: center;
+        padding: 2rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+    }}
+
     /* Timeline */
     .timeline-event {{
         border-left: 3px solid {CAPGEMINI_BLUE};

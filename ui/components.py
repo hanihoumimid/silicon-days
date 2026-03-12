@@ -304,6 +304,50 @@ _SOURCE_CSS = {
     "cloud": "source-cloud",
 }
 
+
+def get_log_stream_html(stream_events, active_sources=None):
+    """Render a streaming log view with source badges and level-based colouring.
+
+    Parameters
+    ----------
+    stream_events:
+        List of dicts produced by ``data.ingestion.get_log_stream()``.
+    active_sources:
+        Set of source IDs to show (``"firewall"``, ``"ad"``, ``"edr"``,
+        ``"cloud"``).  ``None`` means show all.
+    """
+    if active_sources is None:
+        active_sources = {"firewall", "ad", "edr", "cloud"}
+
+    visible = [e for e in stream_events if e["source_id"] in active_sources]
+
+    html = '<div class="log-stream">'
+    if not visible:
+        html += (
+            '<div class="ls-empty">Aucun événement pour les sources '
+            "sélectionnées</div>"
+        )
+    else:
+        for evt in visible:
+            ts = evt["timestamp"]
+            if "T" in ts:
+                ts = ts.split("T")[1].rstrip("Z")
+            src_css = _SOURCE_CSS.get(evt["source_id"], "")
+            level_css = f"ls-{evt['level']}"
+            icon = evt.get("icon", "")
+            src_name = evt.get("source_name", evt["source_id"])
+            msg = evt["message"]
+            html += (
+                f'<div class="ls-entry {level_css}">'
+                f'<span class="ls-ts">{ts}</span>'
+                f'<span class="source-badge {src_css}">{icon} {src_name}</span>'
+                f'<span class="ls-msg">{msg}</span>'
+                f"</div>"
+            )
+    html += "</div>"
+    return html
+
+
 # ECS fields shown in the normalized card (order matters)
 _ECS_DISPLAY_FIELDS = [
     "@timestamp",

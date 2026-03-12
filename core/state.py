@@ -17,3 +17,5 @@ def init_session_state():
         st.session_state.animating = False
     if "selected_scenario" not in st.session_state:
         st.session_state.selected_scenario = 0
+    if "log_stream_events" not in st.session_state:
+        st.session_state.log_stream_events = []

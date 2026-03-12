@@ -978,3 +978,26 @@ INGESTION_EVENTS = [
         ],
     },
 ]
+
+
+def get_log_stream(scenario_idx):
+    """Return a time-sorted flat list of log events with source metadata.
+
+    Each item is a dict with keys:
+        source_id, source_name, icon, timestamp, level, message
+    """
+    events_by_source = INGESTION_EVENTS[scenario_idx]
+    all_events = []
+    for source in SOURCES:
+        src_id = source["id"]
+        for evt in events_by_source.get(src_id, []):
+            all_events.append({
+                "source_id": src_id,
+                "source_name": source["name"],
+                "icon": source["icon"],
+                "timestamp": evt["ecs"].get("@timestamp", ""),
+                "level": evt["ecs"].get("log.level", "info"),
+                "message": evt["ecs"].get("message", ""),
+            })
+    all_events.sort(key=lambda x: x["timestamp"])
+    return all_events
