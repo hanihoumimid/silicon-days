@@ -1,6 +1,8 @@
+import unicodedata
 from datetime import datetime, timedelta
 
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 
 from core.theme import (
     CAPGEMINI_BLUE, CORAL, MINT, SLATE_300, SLATE_400, SLATE_600, SLATE_700,
@@ -145,13 +147,20 @@ Capgemini Cyber Défense 2026
 
 def generate_nis2_pdf(scenario_idx=0):
     """Generate a PDF bytes buffer for the NIS2 report using fpdf2."""
-    import unicodedata
-
-    from fpdf.enums import XPos, YPos
 
     def _safe(text):
-        """Transliterate non-latin-1 characters (e.g. accented French) for PDF."""
-        return unicodedata.normalize("NFD", text).encode("latin-1", "ignore").decode("latin-1")
+        """Transliterate non-latin-1 characters to their closest ASCII equivalent.
+
+        fpdf2's built-in fonts (Helvetica) only support latin-1. We use NFD
+        Unicode normalisation followed by a latin-1 encode/decode round-trip so
+        that accented characters (é → e, à → a, etc.) are preserved as their
+        base letters while any truly unrepresentable code-points are dropped.
+        """
+        return (
+            unicodedata.normalize("NFD", text)
+            .encode("latin-1", "ignore")
+            .decode("latin-1")
+        )
 
     sc = ATTACK_SCENARIOS[scenario_idx]
 

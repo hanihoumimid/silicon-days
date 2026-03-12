@@ -7,8 +7,9 @@
 #   isolated_nodes     : nodes highlighted coral / isolated at phase ≥ 2
 #   lateral_path       : nodes that light up at phase 1 (pre-isolation)
 #   compromised_edges  : edges highlighted during attack
-#   isolated_zone      : (x0, y0, x1, y1) bounding rect drawn at phase ≥ 3
-#   isolated_zone_label: (x, y, text) annotation for the rect
+#   isolated_zone      : (x0, y0, x1, y1) in normalized [0, 1] plot coordinates
+#                        bounding rect drawn around isolated nodes at phase ≥ 3
+#   isolated_zone_label: (x, y, text) annotation for the isolation rect
 #   attack_h/m/s       : base time of the first timeline event
 #   anomaly_window     : (start_h, end_h) for behaviour-chart vrect
 
