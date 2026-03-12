@@ -4,6 +4,7 @@ Hackathon Silicondays 2026 — Capgemini
 Prototype de démonstration interactive
 """
 
+import re
 import time
 from datetime import datetime
 
@@ -20,6 +21,9 @@ from ui.charts import (
     build_mitre_attack_matrix,
     build_confidence_budget_attack, build_confidence_budget_chart,
     build_network_figure, build_risk_gauge,
+    build_events_by_source_chart, build_alerts_by_scenario_chart,
+    build_detection_perf_chart, build_mitre_tactics_coverage_chart,
+    build_source_activity_heatmap, build_ttp_radar_chart,
 )
 from ui.components import (
     build_attack_timeline, generate_nis2_pdf, get_nis2_report_html,
@@ -149,11 +153,11 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------------------------
-tab_avant, tab_ingestion, tab_pendant, tab_apres = st.tabs([
+tab_avant, tab_pendant, tab_apres, tab_analytics = st.tabs([
     "Avant — Sentinel & Baseline",
-    "Ingestion & ECS",
     "Pendant — Riposte Active & Mirage",
     "Après — Forensics & Rapport NIS2",
+    "Analytics — Dashboard Avancé",
 ])
 
 # ===== TAB 1 : AVANT =====
@@ -254,156 +258,6 @@ with tab_avant:
         "Les profils **Admin IT** et **Marketing** restent dans les limites "
         "de leur baseline. Le budget confiance est respecté."
     )
-    st.markdown(f"""
-    <div class="nav-hint">
-        <div class="icon">&#10145;</div>
-        <div class="text">Passez à l'onglet <span class="tab-name">Ingestion & ECS</span> pour visualiser le pipeline d'ingestion multi-sources et la normalisation ECS.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-# ===== TAB : INGESTION & ECS =====
-with tab_ingestion:
-    st.markdown(
-        '<span class="phase-badge phase-avant">Pipeline — Ingestion & Normalisation ECS</span>',
-        unsafe_allow_html=True,
-    )
-    st.markdown("""
-    > **Ingestion multi-sources** : AEGIS collecte les événements bruts depuis
-    > quatre types de sources (Firewall, Active Directory, EDR, Cloud) et les
-    > normalise en temps réel selon l'**Elastic Common Schema (ECS 8.x)** pour
-    > une corrélation unifiée entre les scénarios d'attaque.
-    """)
-
-    # Scenario selector
-    ing_sc_names = [s["name"] for s in ATTACK_SCENARIOS]
-    ing_col_sel, ing_col_info = st.columns([1, 2])
-    with ing_col_sel:
-        ing_chosen = st.selectbox(
-            "Scénario d'attaque simulé",
-            ing_sc_names,
-            index=st.session_state.selected_scenario,
-            key="ing_scenario_select",
-        )
-        ing_sidx = ing_sc_names.index(ing_chosen)
-    with ing_col_info:
-        ing_sc = ATTACK_SCENARIOS[ing_sidx]
-        st.markdown(f"""
-        <div class="scenario-selector anim-fade-in">
-            <div class="label">Contexte de l'ingestion</div>
-            <div style="color:{SLATE_300}; font-family:'Inter',sans-serif; font-size:0.85rem; margin-bottom:0.4rem;">
-                {ing_sc['desc']}
-            </div>
-            <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
-                <span style="color:{SLATE_400}; font-size:0.78rem;">Vecteur : <b style="color:{WHITE};">{ing_sc['vector']}</b></span>
-                <span style="color:{SLATE_400}; font-size:0.78rem;">Cible : <b style="color:{WHITE};">{ing_sc['target']}</b></span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # Global stats across all sources
-    all_events = INGESTION_EVENTS[ing_sidx]
-    total_all = sum(len(v) for v in all_events.values())
-    alerts_all = sum(
-        1
-        for evts in all_events.values()
-        for e in evts
-        if e["ecs"].get("event.kind") == "alert"
-    )
-    st.markdown(f"""
-    <div class="stats-row">
-      <div class="stat-pill">
-        <div class="sp-label">Sources actives</div>
-        <div class="sp-value">{len(SOURCES)}</div>
-      </div>
-      <div class="stat-pill">
-        <div class="sp-label">Événements total</div>
-        <div class="sp-value">{total_all}</div>
-      </div>
-      <div class="stat-pill">
-        <div class="sp-label">Alertes ECS générées</div>
-        <div class="sp-value" style="color:{CORAL};">{alerts_all}</div>
-      </div>
-      <div class="stat-pill">
-        <div class="sp-label">Schéma de normalisation</div>
-        <div class="sp-value" style="color:{CAPGEMINI_BLUE}; font-size:0.82rem;">ECS 8.x</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # Per-source tabs
-    src_tab_labels = [f"{s['icon']} {s['name']}" for s in SOURCES]
-    src_tabs = st.tabs(src_tab_labels)
-
-    for src_tab, source in zip(src_tabs, SOURCES):
-        with src_tab:
-            src_events = INGESTION_EVENTS[ing_sidx].get(source["id"], [])
-
-            # Source header
-            st.markdown(
-                get_ingestion_source_header_html(source),
-                unsafe_allow_html=True,
-            )
-
-            # Per-source stats
-            st.markdown(
-                get_ingestion_stats_html(src_events),
-                unsafe_allow_html=True,
-            )
-
-            if not src_events:
-                st.markdown(f"""
-                <div class="metric-card" style="text-align:center;">
-                    <div class="label">Aucun événement</div>
-                    <div class="value" style="color:{SLATE_400}; font-size:0.9rem;">
-                    Pas d'événement {source['name']} pour ce scénario</div>
-                </div>
-                """, unsafe_allow_html=True)
-                continue
-
-            # Render each event with raw → ECS comparison
-            for idx, event in enumerate(src_events):
-                with st.expander(
-                    f"Événement {idx + 1} — {event['ecs'].get('message', '')[:70]}",
-                    expanded=(idx == 0),
-                ):
-                    col_raw, col_arrow, col_ecs = st.columns([5, 1, 5])
-
-                    with col_raw:
-                        st.markdown(
-                            f"<div style='color:{SLATE_400}; font-family:Inter,sans-serif;"
-                            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
-                            f"margin-bottom:0.4rem;'>Log natif (raw)</div>",
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown(
-                            get_raw_log_html(event["raw"]),
-                            unsafe_allow_html=True,
-                        )
-
-                    with col_arrow:
-                        st.markdown(
-                            '<div class="pipeline-arrow" style="margin-top:2rem;">&#10132;</div>',
-                            unsafe_allow_html=True,
-                        )
-
-                    with col_ecs:
-                        st.markdown(
-                            f"<div style='color:{CAPGEMINI_BLUE}; font-family:Inter,sans-serif;"
-                            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
-                            f"margin-bottom:0.4rem;'>Normalisé ECS 8.x</div>",
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown(
-                            get_ecs_event_html(event["ecs"], source["id"]),
-                            unsafe_allow_html=True,
-                        )
-
-    st.markdown("---")
     st.markdown(f"""
     <div class="nav-hint">
         <div class="icon">&#10145;</div>
@@ -880,3 +734,270 @@ Capgemini Cyber Défense 2026
                     mime="application/pdf",
                     width="stretch",
                 )
+
+
+# ===== TAB 4 : ANALYTICS =====
+with tab_analytics:
+    st.markdown(
+        '<span class="phase-badge phase-apres">Analytics — Dashboard Avancé</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("""
+    > **Dashboard analytique** : vue transversale des événements, alertes et TTPs
+    > sur l'ensemble des scénarios simulés, intégrant le pipeline d'ingestion
+    > multi-sources et la normalisation **ECS 8.x**.
+    """)
+
+    # ---- Global KPIs ----
+    from data.ingestion import INGESTION_EVENTS as _IE
+
+    _total_events_all = sum(
+        len(evts)
+        for sc_events in _IE
+        for evts in sc_events.values()
+    )
+    _total_alerts_all = sum(
+        1
+        for sc_events in _IE
+        for evts in sc_events.values()
+        for e in evts
+        if e["ecs"].get("event.kind") == "alert"
+    )
+    _total_ttps = sum(len(sc["ttps"]) for sc in ATTACK_SCENARIOS)
+    _avg_duration_s = sum(
+        int(m.group(1)) if (m := re.search(r"(\d+)\s*secondes", sc["incident_duration"])) else 0
+        for sc in ATTACK_SCENARIOS
+    ) // len(ATTACK_SCENARIOS)
+
+    st.markdown(f"""
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="sp-label">Scénarios simulés</div>
+        <div class="sp-value">{len(ATTACK_SCENARIOS)}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Événements ingérés</div>
+        <div class="sp-value">{_total_events_all}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Alertes ECS générées</div>
+        <div class="sp-value" style="color:{CORAL};">{_total_alerts_all}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">TTPs MITRE couverts</div>
+        <div class="sp-value" style="color:{CAPGEMINI_BLUE};">{_total_ttps}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Durée moy. remédiation</div>
+        <div class="sp-value" style="color:{MINT};">{_avg_duration_s} s</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ---- Row 1: event volume + alert severity ----
+    st.markdown("**Volume d'événements par source & scénario**")
+    col_ev, col_al = st.columns(2)
+    with col_ev:
+        st.caption("Répartition des événements ingérés par source et par scénario (S1–S4)")
+        st.plotly_chart(
+            build_events_by_source_chart(),
+            width="stretch",
+            key="analytics_events_by_source",
+        )
+    with col_al:
+        st.caption("Distribution des niveaux de criticité des événements ECS par scénario")
+        st.plotly_chart(
+            build_alerts_by_scenario_chart(),
+            width="stretch",
+            key="analytics_alerts_by_scenario",
+        )
+
+    st.markdown("---")
+
+    # ---- Row 2: detection perf + source heatmap ----
+    col_perf, col_heat = st.columns(2)
+    with col_perf:
+        st.markdown("**Performance de détection par scénario**")
+        st.caption("Durée détection → remédiation (secondes)")
+        st.plotly_chart(
+            build_detection_perf_chart(),
+            width="stretch",
+            key="analytics_detection_perf",
+        )
+    with col_heat:
+        st.markdown("**Activité des sources d'ingestion**")
+        st.caption("Nombre d'événements par source (lignes) × scénario (colonnes)")
+        st.plotly_chart(
+            build_source_activity_heatmap(),
+            width="stretch",
+            key="analytics_source_heatmap",
+        )
+
+    st.markdown("---")
+
+    # ---- Row 3: MITRE coverage + TTP radar ----
+    col_cov, col_rad = st.columns(2)
+    with col_cov:
+        st.markdown("**Couverture des tactiques MITRE ATT&CK**")
+        st.caption("Nombre de scénarios activant chaque tactique")
+        st.plotly_chart(
+            build_mitre_tactics_coverage_chart(),
+            width="stretch",
+            key="analytics_mitre_coverage",
+        )
+    with col_rad:
+        st.markdown("**Radar des tactiques ATT&CK**")
+        st.caption("Distribution des TTPs détectés par famille de tactique")
+        st.plotly_chart(
+            build_ttp_radar_chart(),
+            width="stretch",
+            key="analytics_ttp_radar",
+        )
+
+    st.markdown("---")
+
+    # ---- Ingestion & ECS pipeline (integrated) ----
+    st.markdown(
+        '<span class="phase-badge phase-avant">Pipeline — Ingestion & Normalisation ECS</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("""
+    > **Ingestion multi-sources** : AEGIS collecte les événements bruts depuis
+    > quatre types de sources (Firewall, Active Directory, EDR, Cloud) et les
+    > normalise en temps réel selon l'**Elastic Common Schema (ECS 8.x)** pour
+    > une corrélation unifiée entre les scénarios d'attaque.
+    """)
+
+    # Scenario selector
+    ing_sc_names = [s["name"] for s in ATTACK_SCENARIOS]
+    ing_col_sel, ing_col_info = st.columns([1, 2])
+    with ing_col_sel:
+        ing_chosen = st.selectbox(
+            "Scénario d'attaque simulé",
+            ing_sc_names,
+            index=st.session_state.selected_scenario,
+            key="ing_scenario_select",
+        )
+        ing_sidx = ing_sc_names.index(ing_chosen)
+    with ing_col_info:
+        ing_sc = ATTACK_SCENARIOS[ing_sidx]
+        st.markdown(f"""
+        <div class="scenario-selector anim-fade-in">
+            <div class="label">Contexte de l'ingestion</div>
+            <div style="color:{SLATE_300}; font-family:'Inter',sans-serif; font-size:0.85rem; margin-bottom:0.4rem;">
+                {ing_sc['desc']}
+            </div>
+            <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <span style="color:{SLATE_400}; font-size:0.78rem;">Vecteur : <b style="color:{WHITE};">{ing_sc['vector']}</b></span>
+                <span style="color:{SLATE_400}; font-size:0.78rem;">Cible : <b style="color:{WHITE};">{ing_sc['target']}</b></span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Global stats for selected scenario
+    ing_all_events = INGESTION_EVENTS[ing_sidx]
+    ing_total_all = sum(len(v) for v in ing_all_events.values())
+    ing_alerts_all = sum(
+        1
+        for evts in ing_all_events.values()
+        for e in evts
+        if e["ecs"].get("event.kind") == "alert"
+    )
+    st.markdown(f"""
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="sp-label">Sources actives</div>
+        <div class="sp-value">{len(SOURCES)}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Événements total</div>
+        <div class="sp-value">{ing_total_all}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Alertes ECS générées</div>
+        <div class="sp-value" style="color:{CORAL};">{ing_alerts_all}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Schéma de normalisation</div>
+        <div class="sp-value" style="color:{CAPGEMINI_BLUE}; font-size:0.82rem;">ECS 8.x</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Per-source sub-tabs
+    src_tab_labels = [f"{s['icon']} {s['name']}" for s in SOURCES]
+    src_tabs = st.tabs(src_tab_labels)
+
+    for src_tab, source in zip(src_tabs, SOURCES):
+        with src_tab:
+            src_events = INGESTION_EVENTS[ing_sidx].get(source["id"], [])
+
+            st.markdown(
+                get_ingestion_source_header_html(source),
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                get_ingestion_stats_html(src_events),
+                unsafe_allow_html=True,
+            )
+
+            if not src_events:
+                st.markdown(f"""
+                <div class="metric-card" style="text-align:center;">
+                    <div class="label">Aucun événement</div>
+                    <div class="value" style="color:{SLATE_400}; font-size:0.9rem;">
+                    Pas d'événement {source['name']} pour ce scénario</div>
+                </div>
+                """, unsafe_allow_html=True)
+                continue
+
+            for idx, event in enumerate(src_events):
+                with st.expander(
+                    f"Événement {idx + 1} — {event['ecs'].get('message', '')[:70]}",
+                    expanded=(idx == 0),
+                ):
+                    col_raw, col_arrow, col_ecs = st.columns([5, 1, 5])
+
+                    with col_raw:
+                        st.markdown(
+                            f"<div style='color:{SLATE_400}; font-family:Inter,sans-serif;"
+                            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
+                            f"margin-bottom:0.4rem;'>Log natif (raw)</div>",
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            get_raw_log_html(event["raw"]),
+                            unsafe_allow_html=True,
+                        )
+
+                    with col_arrow:
+                        st.markdown(
+                            '<div class="pipeline-arrow" style="margin-top:2rem;">&#10132;</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    with col_ecs:
+                        st.markdown(
+                            f"<div style='color:{CAPGEMINI_BLUE}; font-family:Inter,sans-serif;"
+                            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
+                            f"margin-bottom:0.4rem;'>Normalisé ECS 8.x</div>",
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            get_ecs_event_html(event["ecs"], source["id"]),
+                            unsafe_allow_html=True,
+                        )
+
+    st.markdown("---")
+    st.markdown(f"""
+    <div class="nav-hint">
+        <div class="icon">&#10145;</div>
+        <div class="text">Lancez une simulation dans l'onglet <span class="tab-name">Pendant — Riposte Active & Mirage</span> pour enrichir le dashboard avec des données forensiques en temps réel.</div>
+    </div>
+    """, unsafe_allow_html=True)

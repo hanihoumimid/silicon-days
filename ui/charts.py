@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import plotly.graph_objects as go
 
@@ -358,4 +360,325 @@ def build_confidence_budget_attack(scenario_idx=0):
         font=dict(color=CORAL, size=12, family="Inter"), showarrow=False,
     )
     _chart_layout(fig, "Budget confiance (%)", [0, 110])
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Analytics Dashboard charts
+# ---------------------------------------------------------------------------
+
+def build_events_by_source_chart():
+    """Stacked bar — event count per source per scenario."""
+    from data.ingestion import INGESTION_EVENTS, SOURCES
+
+    source_colors = {
+        "firewall": CORAL,
+        "ad": CAPGEMINI_BLUE,
+        "edr": AMBER,
+        "cloud": MINT,
+    }
+    scenario_labels = [f"S{i+1}" for i in range(len(ATTACK_SCENARIOS))]
+    scenario_full = [sc["name"].split(" — ")[0] for sc in ATTACK_SCENARIOS]
+
+    fig = go.Figure()
+    for source in SOURCES:
+        sid = source["id"]
+        counts = [len(INGESTION_EVENTS[i].get(sid, [])) for i in range(len(ATTACK_SCENARIOS))]
+        fig.add_trace(go.Bar(
+            name=f"{source['icon']} {source['name']}",
+            x=scenario_labels,
+            y=counts,
+            marker_color=source_colors.get(sid, SLATE_400),
+            customdata=scenario_full,
+            hovertemplate=(
+                "<b>%{customdata}</b><br>"
+                f"{source['name']} : %{{y}} événements<extra></extra>"
+            ),
+        ))
+
+    fig.update_layout(
+        barmode="stack",
+        paper_bgcolor=SLATE_800,
+        plot_bgcolor=SLATE_800,
+        xaxis=dict(
+            title="Scénario",
+            tickfont=dict(color=SLATE_300, size=11, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+        ),
+        yaxis=dict(
+            title="Événements",
+            tickfont=dict(color=SLATE_400, size=10, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+        ),
+        legend=dict(font=dict(color=SLATE_400, size=10, family="Inter"),
+                    bgcolor="rgba(26,35,50,0.85)", orientation="h",
+                    yanchor="bottom", y=1.02, xanchor="right", x=1),
+        height=300,
+        margin=dict(l=50, r=20, t=40, b=40),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
+    return fig
+
+
+def build_alerts_by_scenario_chart():
+    """Bar chart — alert count and log-level breakdown per scenario."""
+    from data.ingestion import INGESTION_EVENTS
+
+    levels = ["critical", "warning", "info"]
+    level_colors = {"critical": CORAL, "warning": AMBER, "info": CAPGEMINI_BLUE}
+    scenario_labels = [f"S{i+1}" for i in range(len(ATTACK_SCENARIOS))]
+    scenario_full = [sc["name"].split(" — ")[0] for sc in ATTACK_SCENARIOS]
+
+    fig = go.Figure()
+    for lvl in levels:
+        counts = []
+        for i in range(len(ATTACK_SCENARIOS)):
+            c = sum(
+                1
+                for evts in INGESTION_EVENTS[i].values()
+                for e in evts
+                if e["ecs"].get("log.level") == lvl
+            )
+            counts.append(c)
+        fig.add_trace(go.Bar(
+            name=lvl.capitalize(),
+            x=scenario_labels,
+            y=counts,
+            marker_color=level_colors[lvl],
+            customdata=scenario_full,
+            hovertemplate=(
+                "<b>%{customdata}</b><br>"
+                f"{lvl.capitalize()} : %{{y}}<extra></extra>"
+            ),
+        ))
+
+    fig.update_layout(
+        barmode="stack",
+        paper_bgcolor=SLATE_800,
+        plot_bgcolor=SLATE_800,
+        xaxis=dict(
+            title="Scénario",
+            tickfont=dict(color=SLATE_300, size=11, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+        ),
+        yaxis=dict(
+            title="Événements",
+            tickfont=dict(color=SLATE_400, size=10, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+        ),
+        legend=dict(font=dict(color=SLATE_400, size=10, family="Inter"),
+                    bgcolor="rgba(26,35,50,0.85)", orientation="h",
+                    yanchor="bottom", y=1.02, xanchor="right", x=1),
+        height=300,
+        margin=dict(l=50, r=20, t=40, b=40),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
+    return fig
+
+
+def build_detection_perf_chart():
+    """Horizontal bar — detection-to-remediation duration per scenario."""
+    labels = []
+    durations = []
+    colors = []
+    scenario_colors = [CORAL, AMBER, MINT, CAPGEMINI_BLUE]
+
+    for i, sc in enumerate(ATTACK_SCENARIOS):
+        labels.append(sc["name"].split(" — ")[0])
+        m = re.search(r"(\d+)\s*secondes", sc.get("incident_duration", "0"))
+        durations.append(int(m.group(1)) if m else 0)
+        colors.append(scenario_colors[i % len(scenario_colors)])
+
+    fig = go.Figure(go.Bar(
+        x=durations,
+        y=labels,
+        orientation="h",
+        marker_color=colors,
+        text=[f"{d} s" for d in durations],
+        textposition="outside",
+        textfont=dict(color=SLATE_300, size=11, family="Inter"),
+        hovertemplate="<b>%{y}</b><br>Durée : %{x} s<extra></extra>",
+    ))
+    fig.update_layout(
+        paper_bgcolor=SLATE_800,
+        plot_bgcolor=SLATE_800,
+        xaxis=dict(
+            title="Secondes",
+            tickfont=dict(color=SLATE_400, size=10, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+            range=[0, max(durations) * 1.3],
+        ),
+        yaxis=dict(
+            tickfont=dict(color=SLATE_300, size=10, family="Inter"),
+            showgrid=False,
+        ),
+        height=220,
+        margin=dict(l=20, r=60, t=10, b=40),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
+    return fig
+
+
+def build_mitre_tactics_coverage_chart():
+    """Horizontal bar — how many scenarios map to each ATT&CK tactic."""
+    tactic_counts = {}
+    for sc in ATTACK_SCENARIOS:
+        seen = set()
+        for _code, _name, phase in sc["ttps"]:
+            tactic = _normalize_tactic_name(phase)
+            if tactic not in seen:
+                tactic_counts[tactic] = tactic_counts.get(tactic, 0) + 1
+                seen.add(tactic)
+
+    sorted_tactics = sorted(tactic_counts.items(), key=lambda x: x[1])
+    tactics = [t for t, _ in sorted_tactics]
+    counts = [c for _, c in sorted_tactics]
+    bar_colors = [
+        CORAL if c == max(counts) else (AMBER if c >= 2 else CAPGEMINI_BLUE)
+        for c in counts
+    ]
+
+    fig = go.Figure(go.Bar(
+        x=counts,
+        y=tactics,
+        orientation="h",
+        marker_color=bar_colors,
+        text=counts,
+        textposition="outside",
+        textfont=dict(color=SLATE_300, size=11, family="Inter"),
+        hovertemplate="<b>%{y}</b><br>Scénarios : %{x}<extra></extra>",
+    ))
+    fig.update_layout(
+        paper_bgcolor=SLATE_800,
+        plot_bgcolor=SLATE_800,
+        xaxis=dict(
+            title="Nb scénarios",
+            tickfont=dict(color=SLATE_400, size=10, family="Inter"),
+            title_font=dict(color=SLATE_400, family="Inter"),
+            gridcolor=SLATE_700,
+            dtick=1,
+            range=[0, max(counts) + 1.5],
+        ),
+        yaxis=dict(
+            tickfont=dict(color=SLATE_300, size=10, family="Inter"),
+            showgrid=False,
+        ),
+        height=max(220, 30 * len(tactics) + 60),
+        margin=dict(l=20, r=40, t=10, b=40),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
+    return fig
+
+
+def build_source_activity_heatmap():
+    """Heatmap — event count per source (rows) × scenario (cols)."""
+    from data.ingestion import INGESTION_EVENTS, SOURCES
+
+    source_labels = [f"{s['icon']} {s['name']}" for s in SOURCES]
+    scenario_labels = [f"S{i+1}" for i in range(len(ATTACK_SCENARIOS))]
+    scenario_full = [sc["name"] for sc in ATTACK_SCENARIOS]
+
+    z = []
+    text_vals = []
+    for source in SOURCES:
+        row = []
+        text_row = []
+        for i in range(len(ATTACK_SCENARIOS)):
+            cnt = len(INGESTION_EVENTS[i].get(source["id"], []))
+            row.append(cnt)
+            text_row.append(str(cnt))
+        z.append(row)
+        text_vals.append(text_row)
+
+    fig = go.Figure(go.Heatmap(
+        z=z,
+        x=scenario_labels,
+        y=source_labels,
+        text=text_vals,
+        texttemplate="%{text}",
+        textfont=dict(size=13, color=WHITE, family="Inter"),
+        customdata=[[sf for sf in scenario_full] for _ in SOURCES],
+        colorscale=[
+            [0.0, "rgba(71,85,105,0.25)"],
+            [0.5, f"rgba(0,112,173,0.55)"],
+            [1.0, f"rgba(0,112,173,0.95)"],
+        ],
+        showscale=False,
+        xgap=4,
+        ygap=4,
+        hovertemplate=(
+            "<b>%{customdata}</b><br>"
+            "Source : %{y}<br>"
+            "Événements : %{z}<extra></extra>"
+        ),
+    ))
+    fig.update_layout(
+        paper_bgcolor=SLATE_800,
+        plot_bgcolor=SLATE_800,
+        xaxis=dict(
+            tickfont=dict(color=SLATE_300, size=11, family="Inter"),
+            showgrid=False,
+        ),
+        yaxis=dict(
+            tickfont=dict(color=SLATE_300, size=11, family="Inter"),
+            showgrid=False,
+            autorange="reversed",
+        ),
+        height=220,
+        margin=dict(l=20, r=20, t=10, b=30),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
+    return fig
+
+
+def build_ttp_radar_chart():
+    """Radar chart — TTP count per ATT&CK phase across all scenarios."""
+    tactic_counts = {}
+    for sc in ATTACK_SCENARIOS:
+        for _code, _name, phase in sc["ttps"]:
+            tactic = _normalize_tactic_name(phase)
+            tactic_counts[tactic] = tactic_counts.get(tactic, 0) + 1
+
+    tactics = list(tactic_counts.keys())
+    counts = [tactic_counts[t] for t in tactics]
+    # close radar loop
+    tactics_loop = tactics + [tactics[0]]
+    counts_loop = counts + [counts[0]]
+
+    fig = go.Figure(go.Scatterpolar(
+        r=counts_loop,
+        theta=tactics_loop,
+        fill="toself",
+        fillcolor="rgba(0,112,173,0.18)",
+        line=dict(color=CAPGEMINI_BLUE, width=2),
+        marker=dict(color=CAPGEMINI_BLUE, size=6),
+        hovertemplate="<b>%{theta}</b><br>TTPs : %{r}<extra></extra>",
+    ))
+    fig.update_layout(
+        paper_bgcolor=SLATE_800,
+        plot_bgcolor=SLATE_800,
+        polar=dict(
+            bgcolor=SLATE_800,
+            radialaxis=dict(
+                visible=True,
+                tickfont=dict(color=SLATE_400, size=9, family="Inter"),
+                gridcolor=SLATE_700,
+                linecolor=SLATE_600,
+                dtick=1,
+            ),
+            angularaxis=dict(
+                tickfont=dict(color=SLATE_300, size=9, family="Inter"),
+                linecolor=SLATE_600,
+                gridcolor=SLATE_700,
+            ),
+        ),
+        height=300,
+        margin=dict(l=40, r=40, t=20, b=20),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
     return fig
