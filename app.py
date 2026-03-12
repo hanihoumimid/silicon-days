@@ -22,8 +22,9 @@ from ui.charts import (
 )
 from ui.components import (
     build_attack_timeline, generate_nis2_pdf, get_nis2_report_html,
-    get_terminal_html,
+    get_terminal_html, build_ingestion_feed_html, build_source_stats_html,
 )
+from data.ecs_logs import SOURCE_META, SRC_FIREWALL, SRC_AD, SRC_EDR, SRC_CLOUD
 
 # ---------------------------------------------------------------------------
 # Page config — MUST be the first Streamlit command
@@ -146,10 +147,11 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------------------------
-tab_avant, tab_pendant, tab_apres = st.tabs([
+tab_avant, tab_pendant, tab_apres, tab_ingestion = st.tabs([
     "Avant — Sentinel & Baseline",
     "Pendant — Riposte Active & Mirage",
     "Après — Forensics & Rapport NIS2",
+    "Ingestion & ECS",
 ])
 
 # ===== TAB 1 : AVANT =====
@@ -661,3 +663,188 @@ Capgemini Cyber Défense 2026
                     mime="application/pdf",
                     width="stretch",
                 )
+
+
+# ===== TAB 4 : INGESTION & ECS =====
+with tab_ingestion:
+    st.markdown(
+        '<span class="phase-badge phase-avant">Ingestion Multi-Sources — ECS</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("""
+    > **Ingestion multi-sources** : AEGIS collecte en temps réel les événements
+    > de sécurité provenant de quatre types de capteurs —
+    > **Firewall**, **Active Directory**, **EDR** et **Cloud** —
+    > et les normalise automatiquement selon l'**Elastic Common Schema (ECS)**
+    > avant corrélation et analyse.
+    """)
+
+    # ---- Scenario selector ----
+    scenario_names = [s["name"] for s in ATTACK_SCENARIOS]
+    col_sel_ecs, col_info_ecs = st.columns([1, 2])
+    with col_sel_ecs:
+        chosen_ecs = st.selectbox(
+            "Scénario d'ingestion",
+            scenario_names,
+            index=st.session_state.selected_scenario,
+            key="ecs_scenario_select",
+        )
+        ecs_sidx = scenario_names.index(chosen_ecs)
+
+    with col_info_ecs:
+        sc_ecs = ATTACK_SCENARIOS[ecs_sidx]
+        st.markdown(f"""
+        <div class="scenario-selector">
+            <div class="label">Contexte du scénario</div>
+            <div style="color:{SLATE_300}; font-family:'Inter',sans-serif;
+                        font-size:0.85rem; margin-bottom:0.4rem;">
+                {sc_ecs['desc']}
+            </div>
+            <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <span style="color:{SLATE_400}; font-size:0.78rem;">
+                    Vecteur : <b style="color:{WHITE};">{sc_ecs['vector']}</b>
+                </span>
+                <span style="color:{SLATE_400}; font-size:0.78rem;">
+                    Sévérité : <b style="color:{CORAL};">{sc_ecs['severity']}</b>
+                </span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ---- Source summary cards ----
+    st.markdown("**Sources actives — Vue d'ensemble**")
+    st.markdown(build_source_stats_html(ecs_sidx), unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ---- ECS schema reference ----
+    with st.expander("📋 Référence ECS (Elastic Common Schema) — champs utilisés", expanded=False):
+        col_ecs1, col_ecs2 = st.columns(2)
+        with col_ecs1:
+            st.markdown(f"""
+<div class="ecs-schema-box">
+<b style="color:{CAPGEMINI_BLUE};">Champs communs</b><br>
+<span class="ecs-field-name">@timestamp</span>
+  <span class="ecs-field-type">date</span>
+  <span class="ecs-field-desc">— Horodatage ISO 8601</span><br>
+<span class="ecs-field-name">event.kind</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— event · alert · metric</span><br>
+<span class="ecs-field-name">event.category</span>
+  <span class="ecs-field-type">keyword[]</span>
+  <span class="ecs-field-desc">— authentication · network · process · file · iam</span><br>
+<span class="ecs-field-name">event.type</span>
+  <span class="ecs-field-type">keyword[]</span>
+  <span class="ecs-field-desc">— allowed · denied · start · end · access · admin</span><br>
+<span class="ecs-field-name">event.action</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— Action déclenchante (ex. firewall-deny)</span><br>
+<span class="ecs-field-name">event.outcome</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— success · failure · unknown</span><br>
+<span class="ecs-field-name">log.level</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— info · warning · error · critical</span><br>
+<span class="ecs-field-name">message</span>
+  <span class="ecs-field-type">text</span>
+  <span class="ecs-field-desc">— Description lisible de l'événement</span>
+</div>
+            """, unsafe_allow_html=True)
+        with col_ecs2:
+            st.markdown(f"""
+<div class="ecs-schema-box">
+<b style="color:{CAPGEMINI_BLUE};">Champs par source</b><br>
+<span class="ecs-field-name">source.ip / destination.ip</span>
+  <span class="ecs-field-type">ip</span>
+  <span class="ecs-field-desc">— Firewall, EDR</span><br>
+<span class="ecs-field-name">network.protocol / .direction</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— Firewall</span><br>
+<span class="ecs-field-name">observer.type / .name</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— Firewall (firewall · ids)</span><br>
+<span class="ecs-field-name">user.name / user.domain</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— AD, EDR, Cloud</span><br>
+<span class="ecs-field-name">winlog.event_id / .logon.type</span>
+  <span class="ecs-field-type">long / keyword</span>
+  <span class="ecs-field-desc">— Active Directory</span><br>
+<span class="ecs-field-name">process.name / .pid / .command_line</span>
+  <span class="ecs-field-type">keyword / long</span>
+  <span class="ecs-field-desc">— EDR</span><br>
+<span class="ecs-field-name">cloud.provider / .region / .service.name</span>
+  <span class="ecs-field-type">keyword</span>
+  <span class="ecs-field-desc">— Cloud (aws · azure · gcp)</span><br>
+<span class="ecs-field-name">file.path / file.name / file.size</span>
+  <span class="ecs-field-type">keyword / long</span>
+  <span class="ecs-field-desc">— EDR, AD</span>
+</div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ---- Source filter tabs ----
+    st.markdown("**Flux d'événements ECS normalisés**")
+    src_all, src_fw, src_ad, src_edr, src_cloud = st.tabs([
+        "Toutes les sources",
+        f"🔥 {SRC_FIREWALL}",
+        f"🗄️ {SRC_AD}",
+        f"🛡️ {SRC_EDR}",
+        f"☁️ {SRC_CLOUD}",
+    ])
+
+    with src_all:
+        st.caption(
+            "Tous les événements ingérés, triés par timestamp, "
+            "normalisés selon ECS."
+        )
+        st.markdown(
+            build_ingestion_feed_html(ecs_sidx),
+            unsafe_allow_html=True,
+        )
+
+    with src_fw:
+        meta_fw = SOURCE_META[SRC_FIREWALL]
+        st.caption(meta_fw["description"])
+        st.markdown(
+            build_ingestion_feed_html(ecs_sidx, filter_source=SRC_FIREWALL),
+            unsafe_allow_html=True,
+        )
+
+    with src_ad:
+        meta_ad = SOURCE_META[SRC_AD]
+        st.caption(meta_ad["description"])
+        st.markdown(
+            build_ingestion_feed_html(ecs_sidx, filter_source=SRC_AD),
+            unsafe_allow_html=True,
+        )
+
+    with src_edr:
+        meta_edr = SOURCE_META[SRC_EDR]
+        st.caption(meta_edr["description"])
+        st.markdown(
+            build_ingestion_feed_html(ecs_sidx, filter_source=SRC_EDR),
+            unsafe_allow_html=True,
+        )
+
+    with src_cloud:
+        meta_cloud = SOURCE_META[SRC_CLOUD]
+        st.caption(meta_cloud["description"])
+        st.markdown(
+            build_ingestion_feed_html(ecs_sidx, filter_source=SRC_CLOUD),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+    st.markdown(f"""
+    <div class="nav-hint">
+        <div class="icon">&#10145;</div>
+        <div class="text">
+            Les événements ECS sont corrélés par AEGIS AI dans l'onglet
+            <span class="tab-name">Pendant — Riposte Active & Mirage</span>
+            pour déclencher la réponse automatique.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)

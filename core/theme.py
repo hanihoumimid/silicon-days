@@ -489,5 +489,160 @@ def inject_custom_css():
         color: {AMBER};
         border: 1px solid rgba(251,191,36,0.25);
     }}
+
+    /* ---- Ingestion multi-sources & ECS feed ---- */
+    .src-stats-row {{
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.2rem;
+    }}
+    .src-stat-card {{
+        background: {CARD_BG};
+        border: 1px solid rgba(148,163,184,0.1);
+        border-radius: 10px;
+        padding: 1rem;
+        animation: fadeInUp 0.4s ease-out both;
+    }}
+    .src-stat-icon {{
+        font-size: 1.5rem;
+        margin-bottom: 0.3rem;
+    }}
+    .src-stat-label {{
+        font-family: 'Inter', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.2rem;
+    }}
+    .src-stat-desc {{
+        color: {SLATE_400};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.7rem;
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }}
+    .src-stat-count {{
+        color: {WHITE};
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+    }}
+    .src-stat-alerts {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+    }}
+    .src-stat-pill {{
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.68rem;
+        font-weight: 600;
+        background: rgba(148,163,184,0.08);
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+    }}
+
+    /* ECS log feed */
+    .ecs-feed {{
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        max-height: 480px;
+        overflow-y: auto;
+        padding-right: 0.3rem;
+    }}
+    .ecs-log-row {{
+        background: {CARD_BG};
+        border-radius: 0 8px 8px 0;
+        padding: 0.65rem 1rem;
+        font-family: 'Inter', sans-serif;
+        animation: fadeInUp 0.3s ease-out both;
+    }}
+    .ecs-row-header {{
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.3rem;
+        flex-wrap: wrap;
+    }}
+    .ecs-source-badge {{
+        font-family: 'Inter', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        min-width: 6rem;
+    }}
+    .ecs-timestamp {{
+        color: {SLATE_400};
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+    }}
+    .ecs-severity {{
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        min-width: 4.5rem;
+    }}
+    .ecs-level {{
+        color: {SLATE_400};
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.68rem;
+    }}
+    .ecs-message {{
+        color: {SLATE_300};
+        font-size: 0.84rem;
+        line-height: 1.45;
+        margin-bottom: 0.35rem;
+    }}
+    .ecs-pills {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+    }}
+    .ecs-field {{
+        display: inline-flex;
+        align-items: center;
+        background: rgba(148,163,184,0.07);
+        border: 1px solid rgba(148,163,184,0.12);
+        border-radius: 4px;
+        overflow: hidden;
+        font-size: 0.68rem;
+        font-family: 'JetBrains Mono', monospace;
+    }}
+    .ecs-key {{
+        background: rgba(0,112,173,0.15);
+        color: {SLATE_400};
+        padding: 0.1rem 0.35rem;
+    }}
+    .ecs-val {{
+        color: {WHITE};
+        padding: 0.1rem 0.35rem;
+    }}
+
+    /* ECS schema legend */
+    .ecs-schema-box {{
+        background: {CARD_BG};
+        border: 1px solid rgba(0,112,173,0.2);
+        border-radius: 10px;
+        padding: 1rem 1.4rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        color: {SLATE_300};
+        line-height: 1.9;
+    }}
+    .ecs-schema-box .ecs-field-name {{
+        color: {CAPGEMINI_BLUE};
+        font-weight: 600;
+    }}
+    .ecs-schema-box .ecs-field-type {{
+        color: {AMBER};
+        font-size: 0.7rem;
+    }}
+    .ecs-schema-box .ecs-field-desc {{
+        color: {SLATE_400};
+        font-size: 0.72rem;
+    }}
 </style>
 """, unsafe_allow_html=True)

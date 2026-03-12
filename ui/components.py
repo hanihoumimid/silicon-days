@@ -5,10 +5,15 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
 from core.theme import (
-    CAPGEMINI_BLUE, CORAL, MINT, SLATE_300, SLATE_400, SLATE_600, SLATE_700,
-    WHITE,
+    AMBER, CAPGEMINI_BLUE, CORAL, MINT, SLATE_300, SLATE_400, SLATE_600,
+    SLATE_700, WHITE,
 )
 from data.mock_data import ATTACK_SCENARIOS
+from data.ecs_logs import (
+    ECS_LOGS_BY_SCENARIO, SOURCE_META, SRC_FIREWALL, SRC_AD, SRC_EDR,
+    SRC_CLOUD, SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM,
+    SEVERITY_LOW, SEVERITY_INFO,
+)
 
 
 def get_terminal_html(lines):
@@ -285,3 +290,142 @@ def generate_nis2_pdf(scenario_idx=0):
     )
 
     return bytes(pdf.output())
+
+
+# ---------------------------------------------------------------------------
+# ECS Ingestion feed helpers
+# ---------------------------------------------------------------------------
+
+_SEVERITY_STYLES = {
+    SEVERITY_CRITICAL: (CORAL,    "rgba(248,113,113,0.08)", "rgba(248,113,113,0.3)"),
+    SEVERITY_HIGH:     (AMBER,    "rgba(251,191,36,0.08)",  "rgba(251,191,36,0.3)"),
+    SEVERITY_MEDIUM:   ("#FCD34D","rgba(252,211,77,0.06)",  "rgba(252,211,77,0.25)"),
+    SEVERITY_LOW:      (MINT,     "rgba(52,211,153,0.06)",  "rgba(52,211,153,0.25)"),
+    SEVERITY_INFO:     (SLATE_400,"rgba(148,163,184,0.05)", "rgba(148,163,184,0.15)"),
+}
+
+_SOURCE_COLORS = {
+    SRC_FIREWALL: "#F97316",  # orange
+    SRC_AD:       CAPGEMINI_BLUE,
+    SRC_EDR:      MINT,
+    SRC_CLOUD:    "#A78BFA",  # violet
+}
+
+
+def _ecs_field_badge(label, value):
+    """Render a small ECS field pill."""
+    if value is None:
+        return ""
+    return (
+        f'<span class="ecs-field">'
+        f'<span class="ecs-key">{label}</span>'
+        f'<span class="ecs-val">{value}</span>'
+        f'</span>'
+    )
+
+
+def build_ingestion_feed_html(scenario_idx=0, filter_source=None):
+    """Return HTML for the multi-source ECS ingestion feed panel.
+
+    Parameters
+    ----------
+    scenario_idx : int
+        Index into ECS_LOGS_BY_SCENARIO.
+    filter_source : str or None
+        If set, only logs with matching source_type are shown.
+    """
+    logs = ECS_LOGS_BY_SCENARIO[scenario_idx]
+    if filter_source:
+        logs = [l for l in logs if l["source_type"] == filter_source]
+
+    rows = ""
+    for log in logs:
+        sev = log.get("_severity", SEVERITY_INFO)
+        text_col, bg_col, border_col = _SEVERITY_STYLES.get(
+            sev, _SEVERITY_STYLES[SEVERITY_INFO]
+        )
+        src = log["source_type"]
+        src_color = _SOURCE_COLORS.get(src, SLATE_400)
+        meta = SOURCE_META.get(src, {})
+        icon = meta.get("icon", "📄")
+
+        # ECS pills — show the most relevant fields
+        pills = ""
+        for field, key in [
+            ("source.ip",            "source.ip"),
+            ("destination.ip",       "destination.ip"),
+            ("network.protocol",     "network.protocol"),
+            ("user.name",            "user.name"),
+            ("host.hostname",        "host.hostname"),
+            ("process.name",         "process.name"),
+            ("cloud.service.name",   "cloud.service.name"),
+            ("cloud.provider",       "cloud.provider"),
+            ("winlog.event_id",      "winlog.event_id"),
+            ("event.action",         "event.action"),
+        ]:
+            v = log.get(key)
+            if v is not None:
+                pills += _ecs_field_badge(field, v)
+
+        rows += f"""
+<div class="ecs-log-row" style="border-left:3px solid {border_col};
+     background:{bg_col};">
+  <div class="ecs-row-header">
+    <span class="ecs-source-badge" style="color:{src_color};">
+      {icon} {src}
+    </span>
+    <span class="ecs-timestamp">{log.get('@timestamp','')}</span>
+    <span class="ecs-severity" style="color:{text_col};">{sev.upper()}</span>
+    <span class="ecs-level">{log.get('log.level','')}</span>
+  </div>
+  <div class="ecs-message">{log['message']}</div>
+  <div class="ecs-pills">{pills}</div>
+</div>"""
+
+    if not rows:
+        rows = f'<div style="color:{SLATE_400}; padding:1rem; text-align:center;">Aucun événement pour cette source.</div>'
+
+    return f'<div class="ecs-feed">{rows}</div>'
+
+
+def build_source_stats_html(scenario_idx=0):
+    """Return HTML for per-source event-count summary cards."""
+    logs = ECS_LOGS_BY_SCENARIO[scenario_idx]
+    cards = ""
+    for src in [SRC_FIREWALL, SRC_AD, SRC_EDR, SRC_CLOUD]:
+        src_logs = [l for l in logs if l["source_type"] == src]
+        meta = SOURCE_META[src]
+        icon = meta["icon"]
+        label = meta["label"]
+        description = meta["description"]
+        src_color = _SOURCE_COLORS[src]
+        count = len(src_logs)
+        crit = sum(1 for l in src_logs if l["_severity"] == SEVERITY_CRITICAL)
+        high = sum(1 for l in src_logs if l["_severity"] == SEVERITY_HIGH)
+
+        alert_txt = ""
+        if crit:
+            alert_txt += (
+                f'<span class="src-stat-pill" style="color:{CORAL};">'
+                f'{crit} CRITICAL</span>'
+            )
+        if high:
+            alert_txt += (
+                f'<span class="src-stat-pill" style="color:{AMBER};">'
+                f'{high} HIGH</span>'
+            )
+        if not crit and not high:
+            alert_txt = (
+                f'<span class="src-stat-pill" style="color:{MINT};">Normal</span>'
+            )
+
+        cards += f"""
+<div class="src-stat-card" style="border-top:3px solid {src_color};">
+  <div class="src-stat-icon">{icon}</div>
+  <div class="src-stat-label" style="color:{src_color};">{label}</div>
+  <div class="src-stat-desc">{description}</div>
+  <div class="src-stat-count">{count} événements</div>
+  <div class="src-stat-alerts">{alert_txt}</div>
+</div>"""
+
+    return f'<div class="src-stats-row">{cards}</div>'
