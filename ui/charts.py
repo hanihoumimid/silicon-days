@@ -8,6 +8,108 @@ from core.theme import (
 from data.mock_data import ATTACK_SCENARIOS
 
 
+MITRE_TACTICS_ORDER = [
+    "Initial Access",
+    "Execution",
+    "Persistence",
+    "Privilege Escalation",
+    "Defense Evasion",
+    "Credential Access",
+    "Discovery",
+    "Lateral Movement",
+    "Collection",
+    "Command and Control",
+    "Exfiltration",
+    "Impact",
+]
+
+
+def _normalize_tactic_name(tactic):
+    if not tactic:
+        return "Unknown"
+    normalized = str(tactic).strip().title()
+    if normalized == "Command And Control":
+        return "Command and Control"
+    return normalized
+
+
+def build_mitre_attack_matrix(scenario_idx=0):
+    """Build an interactive ATT&CK matrix view for scenario TTPs."""
+    scenario = ATTACK_SCENARIOS[scenario_idx]
+    ttps = scenario["ttps"]
+
+    row_labels = [f"{code} - {name}" for code, name, _ in ttps]
+    z = []
+    text_matrix = []
+    customdata = []
+
+    for code, name, phase in ttps:
+        tactic = _normalize_tactic_name(phase)
+        z_row = []
+        text_row = []
+        cd_row = []
+        for col_tactic in MITRE_TACTICS_ORDER:
+            is_hit = 1 if col_tactic == tactic else 0
+            z_row.append(is_hit)
+            text_row.append(code if is_hit else "")
+            cd_row.append([code, name, tactic])
+        z.append(z_row)
+        text_matrix.append(text_row)
+        customdata.append(cd_row)
+
+    fig = go.Figure(
+        go.Heatmap(
+            z=z,
+            x=MITRE_TACTICS_ORDER,
+            y=row_labels,
+            text=text_matrix,
+            texttemplate="%{text}",
+            textfont={"size": 10, "color": WHITE, "family": "Inter"},
+            customdata=customdata,
+            colorscale=[
+                [0.0, "rgba(71,85,105,0.18)"],
+                [0.499, "rgba(71,85,105,0.18)"],
+                [0.5, "rgba(0,112,173,0.30)"],
+                [1.0, "rgba(0,112,173,0.92)"],
+            ],
+            zmin=0,
+            zmax=1,
+            showscale=False,
+            xgap=3,
+            ygap=3,
+            hovertemplate=(
+                "<b>%{customdata[0]}</b><br>"
+                "Technique: %{customdata[1]}<br>"
+                "Tactique: %{customdata[2]}<extra></extra>"
+            ),
+        )
+    )
+
+    fig.update_layout(
+        paper_bgcolor=SLATE_800,
+        plot_bgcolor=SLATE_800,
+        margin=dict(l=20, r=20, t=10, b=20),
+        height=max(260, 70 + len(row_labels) * 52),
+        xaxis=dict(
+            side="top",
+            tickangle=-25,
+            title="",
+            tickfont=dict(color=SLATE_400, size=10, family="Inter"),
+            showgrid=False,
+            zeroline=False,
+        ),
+        yaxis=dict(
+            title="",
+            autorange="reversed",
+            tickfont=dict(color=SLATE_300, size=10, family="Inter"),
+            showgrid=False,
+            zeroline=False,
+        ),
+        hoverlabel=dict(bgcolor=CARD_BG, font_color=SLATE_300),
+    )
+    return fig
+
+
 def build_network_nodes():
     """Nœuds et liens du réseau d'entreprise."""
     nodes = {

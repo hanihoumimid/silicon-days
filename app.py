@@ -16,6 +16,7 @@ from core.theme import (
 from core.state import init_session_state
 from data.mock_data import ATTACK_SCENARIOS, TERMINAL_SEQUENCES
 from ui.charts import (
+    build_mitre_attack_matrix,
     build_confidence_budget_attack, build_confidence_budget_chart,
     build_network_figure, build_risk_gauge,
 )
@@ -571,6 +572,19 @@ with tab_apres:
             {duration.seconds} s &mdash; Détection à remédiation</div>
         </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        st.markdown("**Matrice MITRE ATT&CK interactive**")
+        st.caption(
+            "Cliquez et zoomez sur la matrice pour explorer les correspondances "
+            "entre les 5 TTPs détectées et les tactiques ATT&CK."
+        )
+        st.plotly_chart(
+            build_mitre_attack_matrix(sidx),
+            width="stretch",
+            key=f"mitre_matrix_{sc['incident_ref']}",
+        )
 
         st.markdown("---")
 
