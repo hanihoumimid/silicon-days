@@ -5,8 +5,8 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
 from core.theme import (
-    CAPGEMINI_BLUE, CORAL, MINT, SLATE_300, SLATE_400, SLATE_600, SLATE_700,
-    WHITE,
+    AMBER, CAPGEMINI_BLUE, CARD_BG, CORAL, GOLD, MINT,
+    SLATE_300, SLATE_400, SLATE_600, SLATE_700, WHITE,
 )
 from data.mock_data import ATTACK_SCENARIOS
 
@@ -285,3 +285,178 @@ def generate_nis2_pdf(scenario_idx=0):
     )
 
     return bytes(pdf.output())
+
+
+# ---------------------------------------------------------------------------
+# Ingestion & ECS rendering helpers
+# ---------------------------------------------------------------------------
+
+_LEVEL_CSS = {
+    "info": "loglevel-info",
+    "warning": "loglevel-warning",
+    "critical": "loglevel-critical",
+}
+
+_SOURCE_CSS = {
+    "firewall": "source-firewall",
+    "ad": "source-ad",
+    "edr": "source-edr",
+    "cloud": "source-cloud",
+}
+
+# ECS fields shown in the normalized card (order matters)
+_ECS_DISPLAY_FIELDS = [
+    "@timestamp",
+    "event.kind",
+    "event.category",
+    "event.type",
+    "event.outcome",
+    "event.code",
+    "source.ip",
+    "source.port",
+    "destination.ip",
+    "destination.port",
+    "network.protocol",
+    "network.direction",
+    "host.name",
+    "host.ip",
+    "user.name",
+    "process.name",
+    "process.pid",
+    "process.command_line",
+    "process.parent.name",
+    "observer.type",
+    "observer.name",
+    "rule.name",
+    "threat.technique.id",
+    "threat.technique.name",
+    "cloud.provider",
+    "cloud.service.name",
+    "log.level",
+    "message",
+]
+
+
+def _fmt_val(v):
+    """Format a raw Python value for display inside an HTML snippet."""
+    if isinstance(v, list):
+        return "[" + ", ".join(f'"{x}"' for x in v) + "]"
+    if isinstance(v, str):
+        return f'"{v}"'
+    return str(v)
+
+
+def get_raw_log_html(raw: dict) -> str:
+    """Render a source-native event as a styled raw-log block."""
+    lines = ""
+    for k, v in raw.items():
+        lines += (
+            f'<div><span class="rk">{k}</span>'
+            f': <span class="rv">{_fmt_val(v)}</span></div>'
+        )
+    return f'<div class="raw-log">{lines}</div>'
+
+
+def get_ecs_event_html(ecs: dict, source_id: str) -> str:
+    """Render an ECS-normalised event card."""
+    level = ecs.get("log.level", "info")
+    level_css = _LEVEL_CSS.get(level, "loglevel-info")
+    kind = ecs.get("event.kind", "event")
+    card_extra = "ecs-alert" if kind == "alert" else "ecs-event-kind"
+    src_css = _SOURCE_CSS.get(source_id, "")
+
+    ts = ecs.get("@timestamp", "")
+    msg = ecs.get("message", "")
+
+    # Build field grid — skip @timestamp and message (shown in header)
+    fields_html = ""
+    for fkey in _ECS_DISPLAY_FIELDS:
+        if fkey in ("@timestamp", "message", "log.level"):
+            continue
+        if fkey not in ecs:
+            continue
+        val = _fmt_val(ecs[fkey])
+        # Truncate long command lines for readability
+        if len(val) > 60:
+            val = val[:57] + '...'
+        fields_html += (
+            f'<div class="ecs-field">'
+            f'<span class="ecs-key">{fkey}</span>'
+            f': <span class="ecs-val">{val}</span>'
+            f'</div>'
+        )
+
+    return f"""
+<div class="ecs-event {card_extra}">
+  <div class="ecs-event-header">
+    <span class="ecs-timestamp">{ts}</span>
+    <span class="{level_css}">{level.upper()}</span>
+  </div>
+  <div class="ecs-message">{msg}</div>
+  <div class="ecs-field-grid">{fields_html}</div>
+</div>
+"""
+
+
+def get_ingestion_source_header_html(source: dict) -> str:
+    """Render the header banner for a source panel."""
+    icon = source["icon"]
+    name = source["name"]
+    vendor = source["vendor"]
+    desc = source["description"]
+    src_css = _SOURCE_CSS.get(source["id"], "")
+    return f"""
+<div class="ingestion-header">
+  <span style="font-size:1.6rem;">{icon}</span>
+  <div>
+    <div class="source-name">
+      <span class="source-badge {src_css}">{name}</span>
+      &nbsp;
+      <span style="color:{SLATE_400}; font-size:0.78rem; font-family:'Inter',sans-serif;">
+        {vendor}
+      </span>
+    </div>
+    <div class="source-desc" style="margin-top:0.25rem;">{desc}</div>
+  </div>
+</div>
+"""
+
+
+def get_ingestion_stats_html(events: list) -> str:
+    """Render a stats row: total events, alerts, event kinds."""
+    total = len(events)
+    alerts = sum(1 for e in events if e["ecs"].get("event.kind") == "alert")
+    normal = total - alerts
+    levels = {}
+    for e in events:
+        lvl = e["ecs"].get("log.level", "info")
+        levels[lvl] = levels.get(lvl, 0) + 1
+
+    critical = levels.get("critical", 0)
+    warning = levels.get("warning", 0)
+    info = levels.get("info", 0)
+
+    return f"""
+<div class="stats-row">
+  <div class="stat-pill">
+    <div class="sp-label">Événements ingérés</div>
+    <div class="sp-value">{total}</div>
+  </div>
+  <div class="stat-pill">
+    <div class="sp-label">Alertes ECS</div>
+    <div class="sp-value" style="color:{CORAL};">{alerts}</div>
+  </div>
+  <div class="stat-pill">
+    <div class="sp-label">Événements normaux</div>
+    <div class="sp-value" style="color:{MINT};">{normal}</div>
+  </div>
+  <div class="stat-pill">
+    <div class="sp-label">Critique</div>
+    <div class="sp-value" style="color:{CORAL};">{critical}</div>
+  </div>
+  <div class="stat-pill">
+    <div class="sp-label">Warning</div>
+    <div class="sp-value" style="color:{AMBER};">{warning}</div>
+  </div>
+</div>
+"""

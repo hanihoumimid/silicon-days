@@ -489,5 +489,203 @@ def inject_custom_css():
         color: {AMBER};
         border: 1px solid rgba(251,191,36,0.25);
     }}
+
+    /* Ingestion source badges */
+    .source-badge {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.2rem 0.65rem;
+        border-radius: 12px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        letter-spacing: 0.3px;
+    }}
+    .source-firewall {{
+        background: rgba(248,113,113,0.12);
+        color: {CORAL};
+        border: 1px solid rgba(248,113,113,0.3);
+    }}
+    .source-ad {{
+        background: rgba(0,112,173,0.12);
+        color: {CAPGEMINI_BLUE};
+        border: 1px solid rgba(0,112,173,0.3);
+    }}
+    .source-edr {{
+        background: rgba(251,191,36,0.12);
+        color: {AMBER};
+        border: 1px solid rgba(251,191,36,0.3);
+    }}
+    .source-cloud {{
+        background: rgba(52,211,153,0.12);
+        color: {MINT};
+        border: 1px solid rgba(52,211,153,0.3);
+    }}
+
+    /* Log level pill */
+    .loglevel-info {{
+        color: {SLATE_400};
+        background: rgba(148,163,184,0.1);
+        border: 1px solid rgba(148,163,184,0.2);
+        padding: 0.1rem 0.45rem;
+        border-radius: 4px;
+        font-size: 0.68rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+    }}
+    .loglevel-warning {{
+        color: {AMBER};
+        background: rgba(251,191,36,0.1);
+        border: 1px solid rgba(251,191,36,0.25);
+        padding: 0.1rem 0.45rem;
+        border-radius: 4px;
+        font-size: 0.68rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+    }}
+    .loglevel-critical {{
+        color: {CORAL};
+        background: rgba(248,113,113,0.1);
+        border: 1px solid rgba(248,113,113,0.25);
+        padding: 0.1rem 0.45rem;
+        border-radius: 4px;
+        font-size: 0.68rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+    }}
+
+    /* ECS event card */
+    .ecs-event {{
+        background: {CARD_BG};
+        border: 1px solid rgba(148,163,184,0.1);
+        border-radius: 8px;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 0.6rem;
+        animation: fadeInUp 0.3s ease-out both;
+    }}
+    .ecs-event.ecs-alert {{
+        border-left: 3px solid {CORAL};
+    }}
+    .ecs-event.ecs-event-kind {{
+        border-left: 3px solid {CAPGEMINI_BLUE};
+    }}
+    .ecs-event-header {{
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+    }}
+    .ecs-timestamp {{
+        color: {SLATE_400};
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+    }}
+    .ecs-message {{
+        color: {SLATE_300};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.82rem;
+        margin-top: 0.2rem;
+    }}
+    .ecs-field-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 0.3rem 1rem;
+        margin-top: 0.5rem;
+    }}
+    .ecs-field {{
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        color: {SLATE_400};
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+    .ecs-field .ecs-key {{
+        color: {CAPGEMINI_BLUE};
+    }}
+    .ecs-field .ecs-val {{
+        color: {SLATE_300};
+    }}
+
+    /* Ingestion pipeline header */
+    .ingestion-header {{
+        background: linear-gradient(135deg, {SLATE_700}, {CARD_BG});
+        border: 1px solid rgba(0,112,173,0.15);
+        border-radius: 8px;
+        padding: 0.8rem 1.2rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }}
+    .ingestion-header .source-name {{
+        color: {WHITE};
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }}
+    .ingestion-header .source-vendor {{
+        color: {SLATE_400};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.78rem;
+    }}
+    .ingestion-header .source-desc {{
+        color: {SLATE_400};
+        font-family: 'Inter', sans-serif;
+        font-size: 0.75rem;
+    }}
+
+    /* Raw log block */
+    .raw-log {{
+        background: {SLATE_700};
+        border: 1px solid rgba(148,163,184,0.12);
+        border-radius: 6px;
+        padding: 0.8rem 1rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        color: {SLATE_300};
+        line-height: 1.7;
+        overflow-x: auto;
+    }}
+    .raw-log .rk {{ color: {GOLD}; }}
+    .raw-log .rv {{ color: {SLATE_300}; }}
+
+    /* Pipeline arrow */
+    .pipeline-arrow {{
+        text-align: center;
+        font-size: 1.2rem;
+        color: {CAPGEMINI_BLUE};
+        padding: 0.2rem 0;
+        font-family: 'Inter', sans-serif;
+    }}
+
+    /* Stats pill row */
+    .stats-row {{
+        display: flex;
+        gap: 0.8rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }}
+    .stat-pill {{
+        background: {CARD_BG};
+        border: 1px solid rgba(148,163,184,0.1);
+        border-radius: 8px;
+        padding: 0.5rem 0.9rem;
+        font-family: 'Inter', sans-serif;
+    }}
+    .stat-pill .sp-label {{
+        color: {SLATE_400};
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }}
+    .stat-pill .sp-value {{
+        color: {WHITE};
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1rem;
+        font-weight: 600;
+    }}
 </style>
 """, unsafe_allow_html=True)

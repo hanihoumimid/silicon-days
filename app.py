@@ -15,6 +15,7 @@ from core.theme import (
 )
 from core.state import init_session_state
 from data.mock_data import ATTACK_SCENARIOS, TERMINAL_SEQUENCES
+from data.ingestion import INGESTION_EVENTS, SOURCES
 from ui.charts import (
     build_mitre_attack_matrix,
     build_confidence_budget_attack, build_confidence_budget_chart,
@@ -23,6 +24,8 @@ from ui.charts import (
 from ui.components import (
     build_attack_timeline, generate_nis2_pdf, get_nis2_report_html,
     get_terminal_html,
+    get_ingestion_source_header_html, get_ingestion_stats_html,
+    get_raw_log_html, get_ecs_event_html,
 )
 
 # ---------------------------------------------------------------------------
@@ -146,8 +149,9 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------------------------
-tab_avant, tab_pendant, tab_apres = st.tabs([
+tab_avant, tab_ingestion, tab_pendant, tab_apres = st.tabs([
     "Avant — Sentinel & Baseline",
+    "Ingestion & ECS",
     "Pendant — Riposte Active & Mirage",
     "Après — Forensics & Rapport NIS2",
 ])
@@ -253,7 +257,157 @@ with tab_avant:
     st.markdown(f"""
     <div class="nav-hint">
         <div class="icon">&#10145;</div>
-        <div class="text">Passez à l'onglet <span class="tab-name">Pendant — Riposte Active & Mirage</span> pour lancer une simulation d'attaque et observer la réponse d'AEGIS AI.</div>
+        <div class="text">Passez à l'onglet <span class="tab-name">Ingestion & ECS</span> pour visualiser le pipeline d'ingestion multi-sources et la normalisation ECS.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ===== TAB : INGESTION & ECS =====
+with tab_ingestion:
+    st.markdown(
+        '<span class="phase-badge phase-avant">Pipeline — Ingestion & Normalisation ECS</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("""
+    > **Ingestion multi-sources** : AEGIS collecte les événements bruts depuis
+    > quatre types de sources (Firewall, Active Directory, EDR, Cloud) et les
+    > normalise en temps réel selon l'**Elastic Common Schema (ECS 8.x)** pour
+    > une corrélation unifiée entre les scénarios d'attaque.
+    """)
+
+    # Scenario selector
+    ing_sc_names = [s["name"] for s in ATTACK_SCENARIOS]
+    ing_col_sel, ing_col_info = st.columns([1, 2])
+    with ing_col_sel:
+        ing_chosen = st.selectbox(
+            "Scénario d'attaque simulé",
+            ing_sc_names,
+            index=st.session_state.selected_scenario,
+            key="ing_scenario_select",
+        )
+        ing_sidx = ing_sc_names.index(ing_chosen)
+    with ing_col_info:
+        ing_sc = ATTACK_SCENARIOS[ing_sidx]
+        st.markdown(f"""
+        <div class="scenario-selector anim-fade-in">
+            <div class="label">Contexte de l'ingestion</div>
+            <div style="color:{SLATE_300}; font-family:'Inter',sans-serif; font-size:0.85rem; margin-bottom:0.4rem;">
+                {ing_sc['desc']}
+            </div>
+            <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <span style="color:{SLATE_400}; font-size:0.78rem;">Vecteur : <b style="color:{WHITE};">{ing_sc['vector']}</b></span>
+                <span style="color:{SLATE_400}; font-size:0.78rem;">Cible : <b style="color:{WHITE};">{ing_sc['target']}</b></span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Global stats across all sources
+    all_events = INGESTION_EVENTS[ing_sidx]
+    total_all = sum(len(v) for v in all_events.values())
+    alerts_all = sum(
+        1
+        for evts in all_events.values()
+        for e in evts
+        if e["ecs"].get("event.kind") == "alert"
+    )
+    st.markdown(f"""
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="sp-label">Sources actives</div>
+        <div class="sp-value">{len(SOURCES)}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Événements total</div>
+        <div class="sp-value">{total_all}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Alertes ECS générées</div>
+        <div class="sp-value" style="color:{CORAL};">{alerts_all}</div>
+      </div>
+      <div class="stat-pill">
+        <div class="sp-label">Schéma de normalisation</div>
+        <div class="sp-value" style="color:{CAPGEMINI_BLUE}; font-size:0.82rem;">ECS 8.x</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Per-source tabs
+    src_tab_labels = [f"{s['icon']} {s['name']}" for s in SOURCES]
+    src_tabs = st.tabs(src_tab_labels)
+
+    for src_tab, source in zip(src_tabs, SOURCES):
+        with src_tab:
+            src_events = INGESTION_EVENTS[ing_sidx].get(source["id"], [])
+
+            # Source header
+            st.markdown(
+                get_ingestion_source_header_html(source),
+                unsafe_allow_html=True,
+            )
+
+            # Per-source stats
+            st.markdown(
+                get_ingestion_stats_html(src_events),
+                unsafe_allow_html=True,
+            )
+
+            if not src_events:
+                st.markdown(f"""
+                <div class="metric-card" style="text-align:center;">
+                    <div class="label">Aucun événement</div>
+                    <div class="value" style="color:{SLATE_400}; font-size:0.9rem;">
+                    Pas d'événement {source['name']} pour ce scénario</div>
+                </div>
+                """, unsafe_allow_html=True)
+                continue
+
+            # Render each event with raw → ECS comparison
+            for idx, event in enumerate(src_events):
+                with st.expander(
+                    f"Événement {idx + 1} — {event['ecs'].get('message', '')[:70]}",
+                    expanded=(idx == 0),
+                ):
+                    col_raw, col_arrow, col_ecs = st.columns([5, 1, 5])
+
+                    with col_raw:
+                        st.markdown(
+                            f"<div style='color:{SLATE_400}; font-family:Inter,sans-serif;"
+                            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
+                            f"margin-bottom:0.4rem;'>Log natif (raw)</div>",
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            get_raw_log_html(event["raw"]),
+                            unsafe_allow_html=True,
+                        )
+
+                    with col_arrow:
+                        st.markdown(
+                            '<div class="pipeline-arrow" style="margin-top:2rem;">&#10132;</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    with col_ecs:
+                        st.markdown(
+                            f"<div style='color:{CAPGEMINI_BLUE}; font-family:Inter,sans-serif;"
+                            f"font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;"
+                            f"margin-bottom:0.4rem;'>Normalisé ECS 8.x</div>",
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            get_ecs_event_html(event["ecs"], source["id"]),
+                            unsafe_allow_html=True,
+                        )
+
+    st.markdown("---")
+    st.markdown(f"""
+    <div class="nav-hint">
+        <div class="icon">&#10145;</div>
+        <div class="text">Passez à l'onglet <span class="tab-name">Pendant — Riposte Active & Mirage</span> pour lancer la simulation d'attaque et observer la réponse d'AEGIS AI.</div>
     </div>
     """, unsafe_allow_html=True)
 
